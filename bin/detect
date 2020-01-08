@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # bin/detect <build-dir>
 
-echo 'aiven-deploy'
-echo 'aiven-deploy'
-pip list
-echo 'aiven-deploy'
-echo 'aiven-deploy'
+echo 'aiven-deploy-detect'
+if ! [ -x "$(command -v pip)" ]; then
+  echo 'Error: pip is not installed.' >&2
+  exit 1
+else
+  echo 'pip version:'
+  echo     "$(pip --version)"
+fi
 exit 0
