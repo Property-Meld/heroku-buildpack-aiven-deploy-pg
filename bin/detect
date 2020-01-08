@@ -2,5 +2,8 @@
 # bin/detect <build-dir>
 
 echo 'aiven-deploy'
+echo 'aiven-deploy'
 pip list
+echo 'aiven-deploy'
+echo 'aiven-deploy'
 exit 0
