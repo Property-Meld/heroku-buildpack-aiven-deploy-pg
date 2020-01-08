@@ -6,10 +6,14 @@ set -ueo pipefail
 
 build_dir=$1
 env_dir=$3
+BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 
 source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/buildpack-stdlib/v4/stdlib.sh)"
 
+# install python
+# source $BIN_DIR/steps/python
+
 puts_step "install aiven-client"
-pip install aiven-client
+python -m pip install aiven-client
 puts_step "deploy aiven instance"
 invoke setup_review_app_database

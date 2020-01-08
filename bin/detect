@@ -2,11 +2,18 @@
 # bin/detect <build-dir>
 
 echo 'aiven-deploy-detect'
-if ! [ -x "$(command -v pip)" ]; then
-  echo 'Error: pip is not installed.' >&2
+
+echo $(ls -la .)
+
+if ! [ -x "$(command -v python)" ]; then
+  echo 'Error: python is not installed.' >&2
   exit 1
 else
-  echo 'pip version:'
+  echo 'python version:'
   echo     "$(pip --version)"
 fi
+
+python -c "import pip"
+python -c "import invoke"
+
 exit 0
