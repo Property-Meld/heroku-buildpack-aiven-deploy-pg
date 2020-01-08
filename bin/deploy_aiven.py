@@ -1,10 +1,5 @@
 from typing import AnyStr, Union
-
-from circleclient import circleclient
 import invoke.exceptions
-import hashlib
-
-from django.db import OperationalError
 from invoke import task, run
 import os
 import requests
@@ -13,173 +8,12 @@ import json
 import string
 import re
 from urllib.parse import urlparse, urlunparse
-from django.utils.crypto import random
+import random
 from subprocess import Popen, PIPE
 import logging
 
 l = logging.getLogger(__name__)
 l.setLevel(logging.DEBUG)
-
-PRODUCTION = "production"
-STAGING = "staging"
-PRESTAGING = "prestaging"
-
-HEROKU_PRESTAGING_APP = "property-meld-prestaging"
-HEROKU_STAGING_APP = "property-meld-staging"
-HEROKU_PROD_APP = "still-waters-9915"
-
-
-@task
-def deploy(
-    ctx,
-    environment=STAGING,
-    migrate=False,
-    branch=None,
-    no_maint=False,
-    fake_migrations=False,
-):
-    if environment == PRODUCTION:
-        heroku_app_name = HEROKU_PROD_APP
-        git_remote = "heroku"
-    elif environment == PRESTAGING:
-        heroku_app_name = HEROKU_PRESTAGING_APP
-        git_remote = "prestaging"
-    else:
-        heroku_app_name = HEROKU_STAGING_APP
-        git_remote = "staging"
-
-    branch = branch or "master"
-
-    if environment == STAGING:
-        branch = "develop:master"
-
-    publish_static(environment)
-
-    if migrate:
-        backup_db(heroku_app_name)
-
-        if no_maint is False:
-            toggle_heroku_maintenance(heroku_app_name, True)
-
-        publish_python(git_remote, branch)
-
-        if fake_migrations:
-            run_psql(
-                heroku_app_name,
-                "TRUNCATE django_migrations; ALTER TABLE django_content_type ADD name VARCHAR(50);",
-            )
-            migrate_db(heroku_app_name, "--fake")
-        else:
-            migrate_db(heroku_app_name)
-
-        if no_maint is False:
-            toggle_heroku_maintenance(heroku_app_name, False)
-    else:
-        publish_python(git_remote, branch)
-
-
-def publish_static(environment):
-    run("npm install", pty=True)
-    run("NODE_ENV=production gulp rev --{}".format(environment), pty=True)
-    run("NODE_ENV=production gulp publish --{}".format(environment), pty=True)
-
-    hasher = hashlib.sha256()
-    with open("rev-manifest.json", "rb") as revManifest:
-        hasher.update(revManifest.read())
-    with open("version.json", "w") as version:
-        json.dump({"version": hasher.hexdigest()}, version)
-
-    try:
-        run("git add rev-manifest.json version.json", pty=True)
-        run('git commit -m "Updated rev-manifest.json and version.json"', pty=True)
-    except invoke.exceptions.Failure:
-        print(
-            "Failed to add version and manifest. Most likely no changes were made during `gulp rev`. Continuing..."
-        )
-
-
-def backup_db(heroku_app_name):
-    run("heroku pg:backups:capture --app {}".format(heroku_app_name), pty=True)
-
-
-def toggle_heroku_maintenance(heroku_app_name, on):
-    run(
-        "heroku maintenance:{} --app {}".format("on" if on else "off", heroku_app_name),
-        pty=True,
-    )
-
-
-def publish_python(git_remote, branch):
-    run("git push {} {}".format(git_remote, branch), pty=True)
-
-
-def migrate_db(heroku_app_name, options=""):
-    run(
-        "heroku run --app {} python manage.py migrate {}".format(
-            heroku_app_name, options
-        ),
-        pty=True,
-    )
-
-
-def run_psql(heroku_app_name, psql):
-    run('echo "{}" | heroku pg:psql --app {}'.format(psql, heroku_app_name), pty=True)
-
-
-@task
-def custom_tests(ctx, functional=False, screenshots=False, tests=None, platform=None):
-    username = "Property-Meld"
-    project = "propertymeld"
-    branch = run("git rev-parse --abbrev-ref HEAD", hide=True).stdout.strip()
-    circle_token = os.getenv("CIRCLE_TOKEN")
-
-    build_parameters = {"CUSTOM_TESTS": "true", "SAUCE_PLATFORM_INDEX": platform}
-    if functional:
-        build_parameters["RUN_FUNCTIONAL_TESTS"] = "true"
-    if screenshots:
-        build_parameters["GENERATE_SCREENSHOTS"] = "true"
-    if tests:
-        build_parameters["CUSTOM_TEST_NAMES"] = tests
-
-    client = circleclient.CircleClient(circle_token)
-    client.build.trigger(username, project, branch, **build_parameters)
-
-
-@task
-def restore_prop_to_staging(ctx):
-    prod_db_url = "$(heroku pg:backups public-url --app {})".format(HEROKU_PROD_APP)
-    run(
-        "heroku pg:backups restore {production_url} DATABASE_URL --app {staging_app}".format(
-            production_url=prod_db_url, staging_app=HEROKU_STAGING_APP
-        )
-    )
-
-
-PYLINT_CMD = 'pylint {} `find -name "*.py" -not -path "./.env/*" -not -path "./node_modules/*" -not -path "*/migrations/*" {}`'
-
-
-@task
-def pylint(ctx, j=1):
-    circle = os.getenv("CIRCLECI")
-
-    run(
-        PYLINT_CMD.format(
-            "-j {}".format(j),
-            " | circleci tests split --split-by=filesize" if circle else "",
-        )
-    )
-
-
-@task
-def get_migration_manifest(ctx):
-    migrations = sorted(run('bash -c "echo */{**,}/migrations/*.py"').stdout.split())
-    print(migrations)
-
-    for migration in migrations:
-        with open(migration, "rb") as file:
-            data = file.read()
-            print(migration, hashlib.sha256(data).hexdigest())
-
 
 def sanitize_output(output):
     output = re.sub(
@@ -480,7 +314,7 @@ def setup_review_app_database(ctx):
                         )
                     )
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
-                except OperationalError as e:
+                except ReferenceError as e:
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
                     exit(0)
         except invoke.Failure:
