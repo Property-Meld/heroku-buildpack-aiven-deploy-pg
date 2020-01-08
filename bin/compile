@@ -14,6 +14,6 @@ source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/
 # source $BIN_DIR/steps/python
 
 puts_step "install aiven-client"
-python -m pip install aiven-client
+python -m pip install git+https://github.com/aiven/aiven-client.git
 puts_step "deploy aiven instance"
 invoke setup_review_app_database

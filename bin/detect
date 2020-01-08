@@ -5,14 +5,6 @@ echo 'aiven-deploy-detect'
 
 echo $(ls -la .)
 
-if ! [ -x "$(command -v git)" ]; then
-  echo 'Error: git is not installed.' >&2
-  exit 1
-else
-  echo 'git version:'
-  echo     "$(git --version)"
-fi
-
 
 if ! [ -x "$(command -v python)" ]; then
   echo 'Error: python is not installed.' >&2
