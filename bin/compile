@@ -17,4 +17,4 @@ puts_step "install aiven-client"
 python -m pip install git+https://github.com/aiven/aiven-client.git
 puts_step "deploy aiven instance"
 puts_step "$(invoke --list)"
-invoke setup-review-app-database
+invoke -r $BIN_DIR setup-review-app-database
