@@ -10,8 +10,16 @@ BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 
 source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/buildpack-stdlib/v4/stdlib.sh)"
 
-# install python
-# source $BIN_DIR/steps/python
+HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
+
+if [ -d "$env_dir" ]; then
+  export "HEROKU_API_KEY=$(cat $env_dir/HEROKU_API_KEY)"
+  export "HEROKU_APP_NAME=$(cat $env_dir/HEROKU_APP_NAME)"
+fi
+
+puts_step "Fetching Heroku CLI"
+
+curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
 
 puts_step "install aiven-client"
 python -m pip install git+https://github.com/aiven/aiven-client.git
@@ -31,11 +39,19 @@ for X in $(ls $BIN_DIR);do
 done
 puts_step "$(invoke -r $BIN_DIR --list)"
 echo running invoke -r $BIN_DIR setup-review-app-database
+
+
 $(invoke -r $BIN_DIR setup-review-app-database > setup-review-app-database.log) &
-DB_PID=$!
-while ps -p $DB_PID > /dev/null
+
+until ! bin/heroku run printenv --app $HEROKU_APP_NAME | grep -q "REVIEW_APP_HAS_STAGING_DB=True";
 do
-   echo "$DB_PID is running"
-   cat setup-review-app-database.log
-   sleep 30
+  sleep 10;
 done
+
+#DB_PID=$!
+#while ps -p $DB_PID > /dev/null
+#do
+#   echo "$DB_PID is running"
+#   cat setup-review-app-database.log
+#   sleep 30
+#done
