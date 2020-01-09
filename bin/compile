@@ -31,4 +31,11 @@ for X in $(ls $BIN_DIR);do
 done
 puts_step "$(invoke -r $BIN_DIR --list)"
 echo running invoke -r $BIN_DIR setup-review-app-database
-echo "$(invoke -r $BIN_DIR setup-review-app-database)"
+$(invoke -r $BIN_DIR setup-review-app-database > setup-review-app-database.log) &
+DB_PID=$!
+while ps -p $DB_PID > /dev/null
+do
+   echo "$DB_PID is running"
+   cat setup-review-app-database.log
+   sleep 30
+done
