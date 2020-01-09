@@ -11,43 +11,31 @@ BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 # install heroku cli, stdlib, export keys
 source "$BIN_DIR/steps/heroku"
 
-puts_step "ENV: "
-for X in $(ls $env_dir);do
-    echo $X
-done
+source "$BIN_DIR/steps/displayinfo"
+
 
 puts_step "try avn client"
 avn --auth-token $AIVEN_AUTH_TOKEN project list
 
 puts_step "deploy aiven instance"
-echo "pwd: $(pwd)"
-for X in $(ls $(pwd));do
-    echo $X
-done
 
-echo "build_dir: $build_dir"
-for X in $(ls $build_dir);do
-    echo $X
-done
-echo "BIN_DIR: $BIN_DIR"
-for X in $(ls $BIN_DIR);do
-    echo $X
-done
 puts_step "$(invoke -r $BIN_DIR --list)"
 echo running invoke -r $BIN_DIR setup-review-app-database
 
 
-$(invoke -r $BIN_DIR setup-review-app-database > setup-review-app-database.log) &
-
-until ! bin/heroku run printenv --app $HEROKU_APP_NAME | grep -q "REVIEW_APP_HAS_STAGING_DB=True";
-do
-  sleep 10;
+for TASK in "service-create-aiven-db create-db-task create-pool-uri-and-set_env setup-review-app-database";do
+    $(invoke -r $BIN_DIR $TASK > $TASK.log) &
+    DB_PID=$!
+    while ps -p $DB_PID > /dev/null
+    do
+       echo "$DB_PID is running"
+       cat "$TASK.log"
+       sleep 10
+    done
 done
-
-#DB_PID=$!
-#while ps -p $DB_PID > /dev/null
+#until ! bin/heroku run printenv --app $HEROKU_APP_NAME | grep -q "REVIEW_APP_HAS_STAGING_DB=True";
 #do
-#   echo "$DB_PID is running"
-#   cat setup-review-app-database.log
-#   sleep 30
+#  echo "trying to create aiven db"
+#  cat service-create-aiven-db.log
+#  sleep 10;
 #done

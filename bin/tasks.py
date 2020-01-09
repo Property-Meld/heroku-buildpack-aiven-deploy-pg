@@ -244,7 +244,8 @@ def remove_postgres_addon():
         l.info(f"quiet error: {str(e)}")
 
 
-def standup_aiven_db() -> str:
+@task
+def service_create_aiven_db() -> str:
     """
     export STAGING_DATABASE_URL=postgresql://###:###@127.0.0.1:5432/###
     export AIVEN_PROJECT_NAME="###"
@@ -279,22 +280,29 @@ def standup_aiven_db() -> str:
         wait_for_service(config)
     else:
         l.info("Pre-existing db service found.")
-    create_db(config)
-    pool_uri = create_pool(config)
-    set_heroku_env(config, pool_uri)
-    return sanitize_output(pool_uri)
+
+def is_review_app():
+    return os.environ.get("IS_REVIEW_APP", False)
+
+
+@task
+def create_db_task():
+    if is_review_app():
+        create_db(config)
+
+
+@task
+def create_pool_uri_and_set_env():
+    if is_review_app():
+        pool_uri = create_pool(config)
+        set_heroku_env(config, pool_uri)
+        l.info(sanitize_output(pool_uri))
+        return sanitize_output(pool_uri)
 
 
 @task
 def setup_review_app_database(ctx):
-    if os.environ.get("IS_REVIEW_APP"):  # Ensures this is a Review App
-        try:
-            results = standup_aiven_db()
-            l.info("Postgres database deployed.\n\n")
-            l.info(results)
-            l.info("\n\n")
-        except Exception as e:
-            l.warning(e)
+    if is_review_app():
         results = get_heroku_env()
         if not results.get("AIVEN_DATABASE_URL"):
             l.warning("Failed to set AIVEN_DATABASE_URL")
@@ -317,5 +325,3 @@ def setup_review_app_database(ctx):
                 except ReferenceError as e:
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
                     exit(0)
-        except invoke.Failure:
-            l.warning("errors encountered when restoring DB")

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+
+puts_step "displayinfo ENV: "
+for X in $(ls $env_dir);do
+    echo $X
+done
+
+echo "pwd: $(pwd)"
+for X in $(ls $(pwd));do
+    echo $X
+done
+
+echo "build_dir: $build_dir"
+for X in $(ls $build_dir);do
+    echo $X
+done
+echo "BIN_DIR: $BIN_DIR"
+for X in $(ls $BIN_DIR);do
+    echo $X
+done

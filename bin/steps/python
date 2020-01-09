@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+PYTHON_VERSION="python-3.6.7"
+STACK="heroku-16"
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
+BIN_DIR=$(cd "$(dirname "$0")"; pwd)
+
+indent() {
+  sed -u 's/^/       /'
+}
+
+echo "-----> Installing ${PYTHON_VERSION} for ${STACK}"
+VENDORED_BIN="${PYTHON_VERSION}-${STACK}"
+
+if [ -e ${CACHE_DIR}/$VENDORED_BIN ]; then
+    echo "Found in cache" | indent
+else
+    rm -rf ${CACHE_DIR}/*
+    # https://github.com/heroku/heroku-buildpack-python/blob/master/bin/steps/python
+    mkdir -p ${CACHE_DIR}/${VENDORED_BIN}
+    S3_URL="https://lang-python.s3.amazonaws.com/${STACK}/runtimes/${PYTHON_VERSION}.tar.gz"
+    echo "-----> Downloading ${S3_URL}"
+    if ! curl -s ${S3_URL} -o ${CACHE_DIR}/python.tar.gz; then
+        echo "Python ${PYTHON_VERSION} not available ${STACK} stack." | indent
+        exit 1
+    fi
+    echo "Downloaded to ${CACHE_DIR}/${VENDORED_BIN}" | indent
+    echo "-----> Extracting"
+    tar zxvf ${CACHE_DIR}/python.tar.gz -C ${CACHE_DIR}/${VENDORED_BIN} > /dev/null;
+fi
