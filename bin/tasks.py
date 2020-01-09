@@ -287,7 +287,7 @@ def standup_aiven_db() -> str:
 
 @task
 def setup_review_app_database(ctx):
-    if os.environ.get("HEROKU_PARENT_APP_NAME"):  # Ensures this is a Review App
+    if os.environ.get("IS_REVIEW_APP"):  # Ensures this is a Review App
         try:
             results = standup_aiven_db()
             l.info("Postgres database deployed.\n\n")

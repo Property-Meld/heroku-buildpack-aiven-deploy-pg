@@ -13,7 +13,7 @@ for X in $(ls $env_dir);do
     echo $X
 done
 
-# install heroku cli, stdlib
+# install heroku cli, stdlib, export keys
 source steps/heroku
 
 puts_step "try avn client"
