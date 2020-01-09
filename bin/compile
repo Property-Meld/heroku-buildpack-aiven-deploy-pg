@@ -9,7 +9,7 @@ env_dir=$3
 BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 
 # install heroku cli, stdlib, export keys
-source steps/heroku
+source "$BIN_DIR/steps/heroku"
 
 puts_step "ENV: "
 for X in $(ls $env_dir);do
