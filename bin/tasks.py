@@ -1,3 +1,4 @@
+import sys
 from typing import AnyStr, Union
 import invoke.exceptions
 from invoke import task, run
@@ -10,10 +11,9 @@ import re
 from urllib.parse import urlparse, urlunparse
 import random
 from subprocess import Popen, PIPE
-import logging
 
-l = logging.getLogger(__name__)
-l.setLevel(logging.DEBUG)
+stdout = lambda x: sys.stdout.write(x + '\n')
+stderr = lambda x: sys.stderr.write(x + '\n')
 
 def sanitize_output(output):
     output = re.sub(
@@ -49,23 +49,23 @@ def do_popen(
         lines = []
         with process.stderr:
             for line in process.stderr:
-                l.info(line)
+                stdout(line)
                 lines.append(line)
         process.wait()
         return ""
     else:
         process = Popen(cmd, stderr=PIPE, stdout=PIPE, env=os.environ)
-        stdout, stderr = process.communicate()
+        _stdout, _stderr = process.communicate()
     errcode = process.returncode
     if quiet:
         return errcode
     if errcode:
-        l.error(sanitize_output(" ".join(cmd + [stderr.decode("utf8")])))
+        stderr(sanitize_output(" ".join(cmd + [_stderr.decode("utf8")])))
         raise exc(err_msg)
-    l.info(sanitize_output(stdout.decode("utf8")))
+    stdout(sanitize_output(_stdout.decode("utf8")))
     if _json:
-        return json.loads(stdout.decode("utf8"))
-    return sanitize_output(stdout.decode("utf8"))
+        return json.loads(_stdout.decode("utf8"))
+    return sanitize_output(_stdout.decode("utf8"))
 
 
 wait_cmd = """avn --auth-token {auth_token} service wait --project {project} {app_name}""".format
@@ -92,19 +92,19 @@ service_config = {
 
 
 def wait_for_service(config):
-    l.info("Aiven: Waiting for db instance status to be in 'running' state.")
+    stdout("Aiven: Waiting for db instance status to be in 'running' state.")
     do_popen(
         wait_cmd(**config),
         err_msg=f"Had difficulties waiting: {config.get('app_name')}",
         no_buffer=True,
     )
-    l.info("Aiven: new db instance created.")
+    stdout("Aiven: new db instance created.")
     result = do_popen(
         list_cmd(**config),
         err_msg=f"Failed to list services for: {config.get('project')} {str(config.get('app_name'))}.",
         _json=True,
     )
-    l.info(sanitize_output(str(result)))
+    stdout(sanitize_output(str(result)))
     while not all([x.get("state") == "running" for x in result[0].get("node_states")]):
         result = do_popen(
             list_cmd(**config), err_msg="Failed to list services.", _json=True
@@ -125,7 +125,7 @@ def wait_for_service(config):
 def create_db(config) -> str:
     db = None
     while not db:
-        l.info("Trying to create db.")
+        stdout("Trying to create db.")
         db = "propertymeld" in do_popen(
             list_db_cmd(**config),
             err_msg="Error while listing databases in service.",
@@ -140,8 +140,8 @@ def create_db(config) -> str:
                 quiet=True,
             )
         except Exception as e:
-            l.info("Current databases: " + str(e))
-            time.sleep(15)
+            stdout("Current databases: " + str(e))
+            time.sleep(10)
             continue
     result = do_popen(
         list_cmd(**config), err_msg="Failed to list services.", _json=True
@@ -167,7 +167,7 @@ def clear_pre_existing_pool(config):
     try:
         do_popen(pool_delete_cmd(**config), err_msg="Skipping delete pool.", quiet=True)
     except Exception as e:
-        l.info(f"quiet error: {str(e)}")
+        stdout(f"quiet error: {str(e)}")
     time.sleep(10)
 
 
@@ -207,10 +207,10 @@ def set_heroku_env(config, pool_uri=None, add_vars: dict=None):
             },
         )
         if result.status_code in (200, 201, 202, 206):
-            l.info(f"AIVEN_APP_NAME env var set {config.get('app_name')}")
-            l.info(f"AIVEN_DATABASE_URL env var set {to_json.keys()}")
+            stdout(f"AIVEN_APP_NAME env var set {config.get('app_name')}")
+            stdout(f"AIVEN_DATABASE_URL env var set {to_json.keys()}")
         else:
-            l.error(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
+            stderr(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
             exit(8)
 
 
@@ -227,7 +227,7 @@ def get_heroku_env():
         if result.status_code in (200, 201, 202, 206):
             return result.json()
         else:
-            l.error(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
+            stderr(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
             exit(8)
     return {}
 
@@ -241,11 +241,11 @@ def remove_postgres_addon():
                 "heroku addons:destroy heroku-postgresql:hobby-dev --app $HEROKU_APP_NAME --confirm $HEROKU_APP_NAME"
             )
     except Exception as e:
-        l.info(f"quiet error: {str(e)}")
+        stdout(f"quiet error: {str(e)}")
 
 
 @task
-def service_create_aiven_db() -> str:
+def service_create_aiven_db(ctx):
     """
     export STAGING_DATABASE_URL=postgresql://###:###@127.0.0.1:5432/###
     export AIVEN_PROJECT_NAME="###"
@@ -255,48 +255,53 @@ def service_create_aiven_db() -> str:
 
     ./manage.py release_phase.py --run-locally
     """
-    results = get_heroku_env()
-    env_vars = [
-        "AIVEN_APP_NAME",
-        "AIVEN_DATABASE_URL",
-        "AIVEN_PG_USER",
-        "AIVEN_PG_PORT",
-        "AIVEN_PG_PASSWORD",
-    ]
-    if all([x in results for x in env_vars]):
-        l.info("Pre-existing db service found.")
-        return results.get("AIVEN_DATABASE_URL")
-    result = do_popen(
-        list_cmd(**config),
-        err_msg=f"Failed to list services for: {config.get('project')} {str(config.get('app_name'))}.",
-        _json=True,
-    )
-    if not len(result):
-        l.info("Attempting to start new db service instance.")
-        do_popen(
-            service_create_cmd(**{**config, **service_config}),
-            err_msg=f"Unable to create service: {config.get('app_name')}",
+    if is_review_app():
+        results = get_heroku_env()
+        env_vars = [
+            "AIVEN_APP_NAME",
+            "AIVEN_DATABASE_URL",
+            "AIVEN_PG_USER",
+            "AIVEN_PG_PORT",
+            "AIVEN_PG_PASSWORD",
+        ]
+        if all([x in results for x in env_vars]):
+            stdout("Pre-existing db service found.")
+            return results.get("AIVEN_DATABASE_URL")
+        result = do_popen(
+            list_cmd(**config),
+            err_msg=f"Failed to list services for: {config.get('project')} {str(config.get('app_name'))}.",
+            _json=True,
         )
-        wait_for_service(config)
-    else:
-        l.info("Pre-existing db service found.")
+        if not len(result):
+            stdout("Attempting to start new db service instance.")
+            do_popen(
+                service_create_cmd(**{**config, **service_config}),
+                err_msg=f"Unable to create service: {config.get('app_name')}",
+            )
+            wait_for_service(config)
+        else:
+            stdout("Pre-existing db service found.")
+
 
 def is_review_app():
-    return os.environ.get("IS_REVIEW_APP", False)
+    is_ra = os.environ.get("IS_REVIEW_APP", False)
+    if not is_ra:
+        stdout(f'IS_REVIEW_APP: {is_ra}')
+    return is_ra
 
 
 @task
-def create_db_task():
+def create_db_task(ctx):
     if is_review_app():
         create_db(config)
 
 
 @task
-def create_pool_uri_and_set_env():
+def create_pool_uri_and_set_env(ctx):
     if is_review_app():
         pool_uri = create_pool(config)
         set_heroku_env(config, pool_uri)
-        l.info(sanitize_output(pool_uri))
+        stdout(sanitize_output(pool_uri))
         return sanitize_output(pool_uri)
 
 
@@ -305,7 +310,7 @@ def setup_review_app_database(ctx):
     if is_review_app():
         results = get_heroku_env()
         if not results.get("AIVEN_DATABASE_URL"):
-            l.warning("Failed to set AIVEN_DATABASE_URL")
+            stderr("Failed to set AIVEN_DATABASE_URL")
             exit(6)
         try:
             if not results.get('REVIEW_APP_HAS_STAGING_DB', ''):
@@ -324,4 +329,5 @@ def setup_review_app_database(ctx):
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                 except ReferenceError as e:
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
-                    exit(0)
+        except invoke.Failure:
+            stderr("errors encountered when restoring DB")

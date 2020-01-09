@@ -6,6 +6,7 @@ set -ueo pipefail
 
 build_dir=$1
 env_dir=$3
+echo $0
 BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 
 # install heroku cli, stdlib, export keys
@@ -20,22 +21,9 @@ avn --auth-token $AIVEN_AUTH_TOKEN project list
 puts_step "deploy aiven instance"
 
 puts_step "$(invoke -r $BIN_DIR --list)"
-echo running invoke -r $BIN_DIR setup-review-app-database
 
 
-for TASK in "service-create-aiven-db create-db-task create-pool-uri-and-set_env setup-review-app-database";do
-    $(invoke -r $BIN_DIR $TASK > $TASK.log) &
-    DB_PID=$!
-    while ps -p $DB_PID > /dev/null
-    do
-       echo "$DB_PID is running"
-       cat "$TASK.log"
-       sleep 10
-    done
+for TASK in service-create-aiven-db create-db-task create-pool-uri-and-set-env setup-review-app-database;do
+    echo running invoke -r $BIN_DIR $TASK
+    invoke -r $BIN_DIR $TASK
 done
-#until ! bin/heroku run printenv --app $HEROKU_APP_NAME | grep -q "REVIEW_APP_HAS_STAGING_DB=True";
-#do
-#  echo "trying to create aiven db"
-#  cat service-create-aiven-db.log
-#  sleep 10;
-#done
