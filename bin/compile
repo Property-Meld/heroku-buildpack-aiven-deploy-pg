@@ -16,17 +16,18 @@ source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/
 puts_step "install aiven-client"
 python -m pip install git+https://github.com/aiven/aiven-client.git
 puts_step "deploy aiven instance"
-echo "build_dir: $build_dir"
-echo "BIN_DIR: $BIN_DIR"
 echo "pwd: $(pwd)"
 for X in $(ls $(pwd));do
     echo $X
 done
+
+echo "build_dir: $build_dir"
 for X in $(ls $build_dir);do
     echo $X
 done
+echo "BIN_DIR: $BIN_DIR"
 for X in $(ls $BIN_DIR);do
     echo $X
 done
-puts_step "$(invoke -r $(pwd) --list)"
-invoke -r $(pwd) setup-review-app-database
+puts_step "$(invoke -r $BIN_DIR --list)"
+invoke -r $BIN_DIR setup-review-app-database
