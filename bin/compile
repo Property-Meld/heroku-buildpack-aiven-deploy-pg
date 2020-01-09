@@ -30,4 +30,5 @@ for X in $(ls $BIN_DIR);do
     echo $X
 done
 puts_step "$(invoke -r $BIN_DIR --list)"
+echo running invoke -r $BIN_DIR setup-review-app-database
 echo "$(invoke -r $BIN_DIR setup-review-app-database)"
