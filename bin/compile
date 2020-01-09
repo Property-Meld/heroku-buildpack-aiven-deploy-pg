@@ -8,31 +8,16 @@ build_dir=$1
 env_dir=$3
 BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 
-source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/buildpack-stdlib/v4/stdlib.sh)"
-
-HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
-
-if [ -d "$env_dir" ]; then
-  export "HEROKU_API_KEY=$(cat $env_dir/HEROKU_API_KEY)"
-  export "HEROKU_APP_NAME=$(cat $env_dir/HEROKU_APP_NAME)"
-  export "AIVEN_AUTH_TOKEN=$(cat $env_dir/AIVEN_AUTH_TOKEN)"
-  echo "AIVEN_PROJECT_NAME env_dir: $(cat $env_dir/AIVEN_PROJECT_NAME)"
-  export "AIVEN_PROJECT_NAME=$(cat $env_dir/AIVEN_PROJECT_NAME)"
-fi
 puts_step "ENV: "
 for X in $(ls $env_dir);do
     echo $X
 done
 
-puts_step "install aiven-client"
-python -m pip install git+https://github.com/aiven/aiven-client.git
+# install heroku cli, stdlib
+source steps/heroku
 
 puts_step "try avn client"
 avn --auth-token $AIVEN_AUTH_TOKEN project list
-
-puts_step "Fetching Heroku CLI"
-
-curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
 
 puts_step "deploy aiven instance"
 echo "pwd: $(pwd)"
