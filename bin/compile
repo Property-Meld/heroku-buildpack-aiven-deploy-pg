@@ -24,6 +24,9 @@ for X in $(ls $env_dir);do
     echo $X
 done
 
+puts_step "install aiven-client"
+python -m pip install git+https://github.com/aiven/aiven-client.git
+
 puts_step "try avn client"
 avn --auth-token $AIVEN_AUTH_TOKEN project list
 
@@ -31,8 +34,6 @@ puts_step "Fetching Heroku CLI"
 
 curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
 
-puts_step "install aiven-client"
-python -m pip install git+https://github.com/aiven/aiven-client.git
 puts_step "deploy aiven instance"
 echo "pwd: $(pwd)"
 for X in $(ls $(pwd));do
