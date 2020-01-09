@@ -8,13 +8,13 @@ build_dir=$1
 env_dir=$3
 BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 
+# install heroku cli, stdlib, export keys
+source steps/heroku
+
 puts_step "ENV: "
 for X in $(ls $env_dir);do
     echo $X
 done
-
-# install heroku cli, stdlib, export keys
-source steps/heroku
 
 puts_step "try avn client"
 avn --auth-token $AIVEN_AUTH_TOKEN project list
