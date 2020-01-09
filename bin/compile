@@ -19,13 +19,13 @@ puts_step "deploy aiven instance"
 echo "build_dir: $build_dir"
 echo "BIN_DIR: $BIN_DIR"
 echo "pwd: $(pwd)"
-for X in ls $(pwd);do
+for X in $(ls $(pwd));do
     echo $X
 done
-for X in ls $build_dir;do
+for X in $(ls $build_dir);do
     echo $X
 done
-for X in ls $BIN_DIR;do
+for X in $(ls $BIN_DIR);do
     echo $X
 done
 puts_step "$(invoke -r $(pwd) --list)"
