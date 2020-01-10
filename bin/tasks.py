@@ -15,6 +15,11 @@ from subprocess import Popen, PIPE
 stdout = lambda x: sys.stdout.write(x + '\n')
 stderr = lambda x: sys.stderr.write(x + '\n')
 
+heroku_bin = os.environ.get("HEROKU_BIN", "")
+
+print(f"HEROKU_BIN: {heroku_bin}")
+
+
 def sanitize_output(output):
     output = re.sub(
         r"[\"']?password[\"']?: ['\"a-z0-9A-Z]+", "'password': '###'", output
@@ -317,10 +322,10 @@ def setup_review_app_database(ctx):
                 try:
                     time.sleep(10)
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
-                    run("heroku pg:backups capture --app property-meld-staging")
-
+                    run(f"{heroku_bin} pg:backups capture --app property-meld-staging")
                     run(
-                        "pg_dump `heroku pg:backups public-url --app property-meld-staging` | psql {}".format(
+                        "pg_dump `{} pg:backups public-url --app property-meld-staging` | psql {}".format(
+                            heroku_bin,
                             results.get("AIVEN_DATABASE_URL").format(
                                 user=results.get("AIVEN_PG_USER"),
                                 password=results.get("AIVEN_PG_PASSWORD"),
