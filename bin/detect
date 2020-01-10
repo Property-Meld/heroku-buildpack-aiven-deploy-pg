@@ -8,22 +8,10 @@ echo $(ls -la .)
 ########### app.json requirements
 #  "buildpacks": [
 #    {
-#      "url": "https://github.com/heroku/heroku-buildpack-cli"
-#    },
-#    {
 #      "url": "https://github.com/heroku/heroku-buildpack-python"
 #    },
 #   ],
 ###########
-
-if ! [ -x "$(command -v heroku)" ]; then
-  echo 'Error: heroku is not installed.' >&2
-  exit 1
-else
-  echo 'heroku version:'
-  echo     "$(pip --version)"
-fi
-
 
 if ! [ -x "$(command -v python)" ]; then
   echo 'Error: python is not installed.' >&2

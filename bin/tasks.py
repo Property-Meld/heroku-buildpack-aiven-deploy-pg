@@ -15,6 +15,32 @@ from subprocess import Popen, PIPE
 stdout = lambda x: sys.stdout.write(x + '\n')
 stderr = lambda x: sys.stderr.write(x + '\n')
 
+def get_heroku_env():
+    if os.environ.get("HEROKU_APP_NAME"):
+        result = requests.get(
+            f"https://api.heroku.com/apps/{os.environ.get('HEROKU_APP_NAME')}/config-vars",
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/vnd.heroku+json; version=3",
+                "Authorization": f"Bearer {os.environ.get('HEROKU_API_KEY')}",
+            },
+        )
+        if result.status_code in (200, 201, 202, 206):
+            return result.json()
+        else:
+            stderr(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
+            exit(8)
+    return {}
+
+
+heroku_bin = os.environ.get("HEROKU_BIN", get_heroku_env().get("HEROKU_BIN", ""))
+
+print(f"HEROKU_BIN: {heroku_bin}")
+if not heroku_bin:
+    stderr('heroku_bin not set')
+    exit(1)
+
+
 def sanitize_output(output):
     output = re.sub(
         r"[\"']?password[\"']?: ['\"a-z0-9A-Z]+", "'password': '###'", output
@@ -214,24 +240,6 @@ def set_heroku_env(config, pool_uri=None, add_vars: dict=None):
             exit(8)
 
 
-def get_heroku_env():
-    if os.environ.get("HEROKU_APP_NAME"):
-        result = requests.get(
-            f"https://api.heroku.com/apps/{os.environ.get('HEROKU_APP_NAME')}/config-vars",
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/vnd.heroku+json; version=3",
-                "Authorization": f"Bearer {os.environ.get('HEROKU_API_KEY')}",
-            },
-        )
-        if result.status_code in (200, 201, 202, 206):
-            return result.json()
-        else:
-            stderr(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
-            exit(8)
-    return {}
-
-
 def remove_postgres_addon():
     # remove the hobby tier postgres, so we can unset DATABASE_URL
     try:
@@ -317,13 +325,13 @@ def setup_review_app_database(ctx):
                 try:
                     time.sleep(10)
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
-                    run(f"heroku pg:backups capture --app property-meld-staging")
+                    run(f"{heroku_bin} pg:backups capture --app property-meld-staging")
                     aiven_db_url = results.get("AIVEN_DATABASE_URL").format(
                         user=results.get("AIVEN_PG_USER"),
                         password=results.get("AIVEN_PG_PASSWORD"),
                     )
                     run(
-                        f"heroku pg:backups restore `heroku pg:backups public-url --app property-meld-staging` --confirm $HEROKU_APP_NAME --app $HEROKU_APP_NAME {aiven_db_url}"
+                        f"{heroku_bin} pg:backups restore `{heroku_bin} pg:backups public-url --app property-meld-staging` --confirm $HEROKU_APP_NAME --app $HEROKU_APP_NAME {aiven_db_url}"
                     )
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                 except ReferenceError as e:
