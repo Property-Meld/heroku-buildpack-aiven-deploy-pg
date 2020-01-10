@@ -15,11 +15,6 @@ from subprocess import Popen, PIPE
 stdout = lambda x: sys.stdout.write(x + '\n')
 stderr = lambda x: sys.stderr.write(x + '\n')
 
-heroku_bin = os.environ.get("HEROKU_BIN", "")
-
-print(f"HEROKU_BIN: {heroku_bin}")
-
-
 def sanitize_output(output):
     output = re.sub(
         r"[\"']?password[\"']?: ['\"a-z0-9A-Z]+", "'password': '###'", output
@@ -322,13 +317,13 @@ def setup_review_app_database(ctx):
                 try:
                     time.sleep(10)
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
-                    run(f"{heroku_bin} pg:backups capture --app property-meld-staging")
+                    run(f"heroku pg:backups capture --app property-meld-staging")
                     aiven_db_url = results.get("AIVEN_DATABASE_URL").format(
                         user=results.get("AIVEN_PG_USER"),
                         password=results.get("AIVEN_PG_PASSWORD"),
                     )
                     run(
-                        f"{heroku_bin} pg:backups restore `{heroku_bin} pg:backups public-url --app property-meld-staging` --confirm $HEROKU_APP_NAME --app $HEROKU_APP_NAME {aiven_db_url}"
+                        f"heroku pg:backups restore `heroku pg:backups public-url --app property-meld-staging` --confirm $HEROKU_APP_NAME --app $HEROKU_APP_NAME {aiven_db_url}"
                     )
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                 except ReferenceError as e:
