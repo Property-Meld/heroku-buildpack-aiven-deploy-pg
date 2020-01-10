@@ -323,8 +323,9 @@ def setup_review_app_database(ctx):
                     time.sleep(10)
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
                     run(f"{heroku_bin} pg:backups capture --app property-meld-staging")
+
                     run(
-                        "pg_dump `{} pg:backups public-url --app property-meld-staging` | psql {}".format(
+                        "heroku pg:backups restore `heroku pg:backups public-url --app property-meld-staging` --confirm $HEROKU_APP_NAME --app $HEROKU_APP_NAME {}".format(
                             heroku_bin,
                             results.get("AIVEN_DATABASE_URL").format(
                                 user=results.get("AIVEN_PG_USER"),
