@@ -15,6 +15,7 @@ if [ -d "$ENV_DIR" ]; then
   export "AIVEN_PROJECT_NAME=$(cat $ENV_DIR/AIVEN_PROJECT_NAME)"
 
   export "IS_REVIEW_APP=$(cat $ENV_DIR/IS_REVIEW_APP)"
+  export "STAGING_DATABASE_URL=$(cat $ENV_DIR/STAGING_DATABASE_URL)"
 fi
 
 puts_step "install aiven-client"
