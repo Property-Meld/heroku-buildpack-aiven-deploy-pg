@@ -4,9 +4,8 @@ indent() {
   sed -u 's/^/       /'
 }
 
-
-puts_step "displayinfo ENV: "
-for X in $(ls $env_dir);do
+puts_step "display directory ENV: "
+for X in $(ls $ENV_DIR);do
     echo $X | indent
 done
 
@@ -15,10 +14,11 @@ for X in $(ls $(pwd));do
     echo $X | indent
 done
 
-echo "build_dir: $build_dir"
-for X in $(ls $build_dir);do
+echo "BUILD_DIR: $BUILD_DIR"
+for X in $(ls $BUILD_DIR);do
     echo $X | indent
 done
+
 echo "BIN_DIR: $BIN_DIR"
 for X in $(ls $BIN_DIR);do
     echo $X | indent

@@ -4,8 +4,8 @@
 # fail fast
 set -ueo pipefail
 
-build_dir=$1
-env_dir=$3
+BUILD_DIR=$1
+ENV_DIR=$3
 echo $0
 BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 

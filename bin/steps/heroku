@@ -6,12 +6,15 @@ puts_step "Fetching Heroku CLI"
 HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
 curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
 
-if [ -d "$env_dir" ]; then
-  export "HEROKU_API_KEY=$(cat $env_dir/HEROKU_API_KEY)"
-  export "HEROKU_APP_NAME=$(cat $env_dir/HEROKU_APP_NAME)"
-  export "AIVEN_AUTH_TOKEN=$(cat $env_dir/AIVEN_AUTH_TOKEN)"
-  echo "AIVEN_PROJECT_NAME env_dir: $(cat $env_dir/AIVEN_PROJECT_NAME)"
-  export "AIVEN_PROJECT_NAME=$(cat $env_dir/AIVEN_PROJECT_NAME)"
+if [ -d "$ENV_DIR" ]; then
+  export "HEROKU_API_KEY=$(cat $ENV_DIR/HEROKU_API_KEY)"
+  export "HEROKU_APP_NAME=$(cat $ENV_DIR/HEROKU_APP_NAME)"
+
+  echo "AIVEN_PROJECT_NAME ENV_DIR: $(cat $ENV_DIR/AIVEN_PROJECT_NAME)"
+  export "AIVEN_AUTH_TOKEN=$(cat $ENV_DIR/AIVEN_AUTH_TOKEN)"
+  export "AIVEN_PROJECT_NAME=$(cat $ENV_DIR/AIVEN_PROJECT_NAME)"
+
+  export "IS_REVIEW_APP=$(cat $ENV_DIR/IS_REVIEW_APP)"
 fi
 
 puts_step "install aiven-client"

@@ -284,7 +284,7 @@ def service_create_aiven_db(ctx):
 
 
 def is_review_app():
-    is_ra = os.environ.get("IS_REVIEW_APP", False) == "true"
+    is_ra = os.environ.get("IS_REVIEW_APP", False).lower() == "true"
     if not is_ra:
         stdout(f'IS_REVIEW_APP: {is_ra}')
     return is_ra
