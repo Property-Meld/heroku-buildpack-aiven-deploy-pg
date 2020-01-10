@@ -8,6 +8,7 @@ puts_step "Fetching and vendoring Heroku CLI into slug"
 rm -rf "$BUILD_DIR/.heroku/cli"
 mkdir -p "$BUILD_DIR/.heroku/cli"
 mkdir -p "$BUILD_DIR/.heroku/bin"
+ABSOLUTE_BUILD_DIR=$(realpath $BUILD_DIR)
 
 pushd "$BUILD_DIR/.heroku/cli"
 echo pushd $(pwd)
@@ -15,8 +16,8 @@ puts_step "Downloading heroku cli"
 curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
 file "../cli/bin/heroku"
 popd
-rm -f "$(pwd)/$BUILD_DIR/.heroku/bin/heroku"
-ln -s "$(pwd)/$BUILD_DIR/.heroku/cli/bin/heroku" "$(pwd)/$BUILD_DIR/.heroku/bin/heroku"
+rm -f "$ABSOLUTE_BUILD_DIR/.heroku/bin/heroku"
+ln -s "$ABSOLUTE_BUILD_DIR/.heroku/cli/bin/heroku" "$ABSOLUTE_BUILD_DIR/.heroku/bin/heroku"
 echo popd $(pwd)
 
 puts_step "Installing profile.d script"
@@ -29,7 +30,7 @@ EOF
 chmod +x "$BUILD_DIR/.profile.d/heroku-cli.sh"
 source "$BUILD_DIR/.profile.d/heroku-cli.sh"
 "$BUILD_DIR/.heroku/cli/bin/heroku" version
-export HEROKU_BIN="$BUILD_DIR/.heroku/cli/bin/heroku"
+export HEROKU_BIN="$ABSOLUTE_BUILD_DIR/.heroku/cli/bin/heroku"
 puts_step "Heroku CLI installation done"
 
 if [ -d "$ENV_DIR" ]; then
