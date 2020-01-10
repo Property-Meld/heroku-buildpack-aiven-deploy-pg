@@ -22,13 +22,13 @@ echo popd $(pwd)
 
 puts_step "Installing profile.d script"
 mkdir -p "$BUILD_DIR/.profile.d"
-#cat <<EOF > "$BUILD_DIR/.profile.d/heroku-cli.sh"
-#export PATH="\$PATH:\$HOME/.heroku/bin"
-#export HEROKU_SKIP_ANALYTICS=1
-#export HEROKU_DISABLE_AUTOUPDATE=1
-#EOF
-#chmod +x "$BUILD_DIR/.profile.d/heroku-cli.sh"
-#source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+cat <<EOF > "$BUILD_DIR/.profile.d/heroku-cli.sh"
+export PATH="\$PATH:\$HOME/.heroku/bin"
+export HEROKU_SKIP_ANALYTICS=1
+export HEROKU_DISABLE_AUTOUPDATE=1
+EOF
+chmod +x "$BUILD_DIR/.profile.d/heroku-cli.sh"
+source "$BUILD_DIR/.profile.d/heroku-cli.sh"
 "$BUILD_DIR/.heroku/cli/bin/heroku" version
 export HEROKU_BIN="$ABSOLUTE_BUILD_DIR/.heroku/cli/bin/heroku"
 puts_step "Heroku CLI installation done"
