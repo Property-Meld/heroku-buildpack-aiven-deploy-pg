@@ -341,3 +341,41 @@ def setup_review_app_database(ctx):
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
         except invoke.Failure:
             stderr("errors encountered when restoring DB")
+
+@task
+def aiven_teardown_db():
+    app_name = os.environ.get("AIVEN_APP_NAME")
+    l.info(f"Aiven: Attempting to teardown service. {app_name}")
+    auth_token = f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"'
+    project = os.environ.get("AIVEN_PROJECT_NAME", "propertymeld-f3df")
+    assert auth_token
+    assert app_name
+    assert project
+    pool_delete_cmd = [
+        "avn",
+        "--auth-token",
+        auth_token,
+        "service",
+        "connection-pool-delete",
+        app_name,
+        "--project",
+        project,
+        "--pool-name",
+        "propertymeld-pool",
+        "--json",
+    ]
+    do_popen(pool_delete_cmd, err_msg="Failed to delete pool.")
+    l.info(f'Service: {app_name} postgres pool deleted')
+    cmd = [
+        "avn",
+        "--auth-token",
+        auth_token,
+        "service",
+        "terminate",
+        "--force",
+        "--project",
+        project,
+        app_name,
+    ]
+    do_popen(cmd, f"Unable to teardown service: {app_name}")
+    l.info(f'Service: {app_name} deleted.')
