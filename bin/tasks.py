@@ -343,9 +343,9 @@ def setup_review_app_database(ctx):
             stderr("errors encountered when restoring DB")
 
 @task
-def aiven_teardown_db():
+def aiven_teardown_db(ctx):
     app_name = os.environ.get("AIVEN_APP_NAME")
-    l.info(f"Aiven: Attempting to teardown service. {app_name}")
+    stdout(f"Aiven: Attempting to teardown service. {app_name}")
     auth_token = f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"'
     project = os.environ.get("AIVEN_PROJECT_NAME", "propertymeld-f3df")
     assert auth_token
@@ -365,7 +365,7 @@ def aiven_teardown_db():
         "--json",
     ]
     do_popen(pool_delete_cmd, err_msg="Failed to delete pool.")
-    l.info(f'Service: {app_name} postgres pool deleted')
+    stdout(f'Service: {app_name} postgres pool deleted')
     cmd = [
         "avn",
         "--auth-token",
@@ -378,4 +378,4 @@ def aiven_teardown_db():
         app_name,
     ]
     do_popen(cmd, f"Unable to teardown service: {app_name}")
-    l.info(f'Service: {app_name} deleted.')
+    stdout(f'Service: {app_name} deleted.')
