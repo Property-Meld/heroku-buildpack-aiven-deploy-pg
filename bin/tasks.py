@@ -113,7 +113,7 @@ service_config = {
     "cloud": "do-nyc",
     "service_type": "pg",
     "plan": "startup-4",  # hobbyist does not support pooling
-    "pg_version": "pg_version=11",
+    "pg_version": "pg_version=12",
 }
 
 
