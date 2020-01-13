@@ -17,7 +17,11 @@ curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
 file "../cli/bin/heroku"
 popd
 rm -f "$ABSOLUTE_BUILD_DIR/.heroku/cli/bin/heroku"
+echo "moving .heroku to -> /app/.heroku"
 mv "$ABSOLUTE_BUILD_DIR/.heroku" "/app/.heroku"
+echo $(ls /app/.heroku/cli)
+echo $(ls /app/.heroku/cli/bin)
+
 echo popd $(pwd)
 puts_step "Installing profile.d script"
 mkdir -p "$BUILD_DIR/.profile.d"
@@ -28,6 +32,7 @@ export HEROKU_DISABLE_AUTOUPDATE=1
 EOF
 chmod +x "$BUILD_DIR/.profile.d/heroku-cli.sh"
 source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+
 "/app/.heroku/cli/bin/heroku" version
 
 puts_step "Heroku CLI installation done"
