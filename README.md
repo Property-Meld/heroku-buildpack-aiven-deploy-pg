@@ -5,7 +5,8 @@ Requires:
 
 - https://github.com/heroku/heroku-buildpack-python
 
-=== Example `app.json`:
+Example `app.json`:
+===
 
 ```json
 {
@@ -16,10 +17,12 @@ Requires:
     {
       "url": "https://github.com/Property-Meld/heroku-buildpack-aiven-deploy"
     }
+  ]
 }
 ```
 
-==== Required environment config vars:
+Required environment config vars:
+====
 
 ```bash
 HEROKU_API_KEY # get in aiven, be sure to set in pipeline/heroku config vars
