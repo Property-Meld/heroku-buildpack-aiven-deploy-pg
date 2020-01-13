@@ -16,7 +16,7 @@ puts_step "Downloading heroku cli"
 curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
 file "../cli/bin/heroku"
 popd
-rm -f "$ABSOLUTE_BUILD_DIR/.heroku/bin/heroku"
+rm -f "$ABSOLUTE_BUILD_DIR/.heroku/cli/bin/heroku"
 mv "$ABSOLUTE_BUILD_DIR/.heroku" "/app/.heroku"
 echo popd $(pwd)
 puts_step "Installing profile.d script"
