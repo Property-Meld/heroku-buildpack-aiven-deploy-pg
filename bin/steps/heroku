@@ -5,35 +5,27 @@ source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/
 HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
 
 puts_step "Fetching and vendoring Heroku CLI into slug"
-rm -rf "$BUILD_DIR/.heroku/cli"
-mkdir -p "$BUILD_DIR/.heroku/cli"
-mkdir -p "$BUILD_DIR/.heroku/bin"
-ABSOLUTE_BUILD_DIR=$(realpath $BUILD_DIR)
+rm -rf "$HOME/vendor/heroku/cli"
+mkdir -p "$HOME/vendor/heroku/cli"
+mkdir -p "$HOME/vendor/heroku/bin"
 
-pushd "$BUILD_DIR/.heroku/cli"
-echo pushd $(pwd)
+pushd "$HOME/vendor/heroku/cli"
+echo pushd "$HOME/vendor/heroku"
 puts_step "Downloading heroku cli"
 curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
-file "../cli/bin/heroku"
+file "./bin/heroku"
 popd
-rm -f "$ABSOLUTE_BUILD_DIR/.heroku/cli/bin/heroku"
-echo "moving .heroku to -> /app/.heroku"
-mv "$ABSOLUTE_BUILD_DIR/.heroku" "/app/.heroku"
-echo $(ls /app/.heroku/cli)
-echo $(ls /app/.heroku/cli/bin)
-
-echo popd $(pwd)
 puts_step "Installing profile.d script"
-mkdir -p "$BUILD_DIR/.profile.d"
-cat <<EOF > "$BUILD_DIR/.profile.d/heroku-cli.sh"
-export PATH="\$PATH:\/app/.heroku/cli/bin"
+mkdir -p "$HOME/.profile.d"
+cat <<EOF > "$HOME/.profile.d/heroku-cli.sh"
+export PATH="\$PATH:\$HOME/vendor/heroku/bin"
 export HEROKU_SKIP_ANALYTICS=1
 export HEROKU_DISABLE_AUTOUPDATE=1
 EOF
-chmod +x "$BUILD_DIR/.profile.d/heroku-cli.sh"
-source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+chmod +x "$HOME/.profile.d/heroku-cli.sh"
+source "$HOME/.profile.d/heroku-cli.sh"
 
-"/app/.heroku/cli/bin/heroku" version
+"$HOME/heroku/bin/heroku" version
 
 puts_step "Heroku CLI installation done"
 
