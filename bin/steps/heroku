@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/buildpack-stdlib/v4/stdlib.sh)"
+
+HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
+
 puts_step "Fetching and vendoring Heroku CLI into slug"
 rm -rf "$BUILD_DIR/.heroku/cli"
 mkdir -p "$BUILD_DIR/.heroku/cli"
