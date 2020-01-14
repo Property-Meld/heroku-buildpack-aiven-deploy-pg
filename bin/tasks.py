@@ -333,7 +333,7 @@ def setup_review_app_database(ctx):
                         password=results.get("AIVEN_PG_PASSWORD"),
                     )
                     run(
-                        f"pg_dump `{heroku_bin} pg:backups public-url --app {os.environ.get('STAGING_NAME', 'property-meld-staging')}` | psql {aiven_db_url}"
+                        f"pg_dump {results.get('STAGING_DATABASE_URL')} | psql {aiven_db_url}"
                     )
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                 except ReferenceError as e:
