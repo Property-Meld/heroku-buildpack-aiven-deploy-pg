@@ -197,7 +197,7 @@ def clear_pre_existing_pool(config):
     time.sleep(10)
 
 
-def set_heroku_env(config, pool_uri=None, add_vars: dict=None):
+def set_heroku_env(config, pool_uri=None, add_vars: dict={}):
     assert (pool_uri or add_vars)
     if os.environ.get("HEROKU_APP_NAME"):
         if pool_uri:
@@ -218,6 +218,7 @@ def set_heroku_env(config, pool_uri=None, add_vars: dict=None):
                     "AIVEN_PG_USER": parsed_uri.username,
                     "AIVEN_PG_PORT": parsed_uri.port,
                     "AIVEN_PG_PASSWORD": parsed_uri.password,
+                    **add_vars
                 }
             data = json.dumps(to_json)
         else:
@@ -331,11 +332,8 @@ def setup_review_app_database(ctx):
                         password=results.get("AIVEN_PG_PASSWORD"),
                     )
                     run(
-                        f"curl `{heroku_bin} pg:backups public-url --app property-meld-staging` | pg_restore --no-privileges --no-owner -d {aiven_db_url}"
+                        f"curl `{heroku_bin} pg:backups public-url --app {os.environ.get('STAGING_NAME', 'property-meld-staging')}` | pg_restore --no-privileges --no-owner -d {aiven_db_url}"
                     )
-                    # run(
-                    #     f"{heroku_bin} pg:backups restore `{heroku_bin} pg:backups public-url --app property-meld-staging` --confirm $HEROKU_APP_NAME --app $HEROKU_APP_NAME {aiven_db_url}"
-                    # )
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                 except ReferenceError as e:
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
