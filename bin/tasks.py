@@ -331,7 +331,7 @@ def setup_review_app_database(ctx):
                         password=results.get("AIVEN_PG_PASSWORD"),
                     )
                     run(
-                        f"curl `{heroku_bin} pg:backups public-url --app property-meld-staging` | pg_restore -d {aiven_db_url}"
+                        f"curl `{heroku_bin} pg:backups public-url --app property-meld-staging` | pg_restore --no-privileges --no-owner -d {aiven_db_url}"
                     )
                     # run(
                     #     f"{heroku_bin} pg:backups restore `{heroku_bin} pg:backups public-url --app property-meld-staging` --confirm $HEROKU_APP_NAME --app $HEROKU_APP_NAME {aiven_db_url}"
