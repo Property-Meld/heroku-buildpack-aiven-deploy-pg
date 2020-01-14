@@ -7,25 +7,22 @@ HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
 puts_step "Fetching and vendoring Heroku CLI into slug"
 rm -rf "$HOME/vendor/heroku/cli"
 mkdir -p "$HOME/vendor/heroku/cli"
-mkdir -p "$HOME/vendor/heroku/bin"
-
 pushd "$HOME/vendor/heroku/cli"
 echo pushd "$HOME/vendor/heroku"
 puts_step "Downloading heroku cli"
 curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
-file "./bin/heroku"
 popd
 puts_step "Installing profile.d script"
 mkdir -p "$HOME/.profile.d"
 cat <<EOF > "$HOME/.profile.d/heroku-cli.sh"
-export PATH="\$PATH:\$HOME/vendor/heroku/bin"
+export PATH="\$PATH:\$HOME/vendor/heroku/cli/bin"
 export HEROKU_SKIP_ANALYTICS=1
 export HEROKU_DISABLE_AUTOUPDATE=1
 EOF
 chmod +x "$HOME/.profile.d/heroku-cli.sh"
 source "$HOME/.profile.d/heroku-cli.sh"
 
-"$HOME/vendor/heroku/bin/heroku" version
+"$HOME/vendor/heroku/cli/bin/heroku" version
 
 puts_step "Heroku CLI installation done"
 
