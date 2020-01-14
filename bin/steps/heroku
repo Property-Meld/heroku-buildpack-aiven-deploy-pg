@@ -22,6 +22,8 @@ EOF
 chmod +x "$HOME/.profile.d/heroku-cli.sh"
 source "$HOME/.profile.d/heroku-cli.sh"
 
+export HEROKU_BIN="$HOME/vendor/heroku/cli/bin/heroku"
+
 "$HOME/vendor/heroku/cli/bin/heroku" version
 
 puts_step "Heroku CLI installation done"
