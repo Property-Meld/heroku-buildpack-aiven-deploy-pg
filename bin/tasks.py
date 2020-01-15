@@ -100,7 +100,7 @@ service_create_cmd = """avn --auth-token {auth_token} service create --project {
 pool_delete_cmd = """avn --auth-token {auth_token} service connection-pool-delete {app_name} --project {project} --pool-name propertymeld-pool --json""".format
 delete_db_cmd = """avn --auth-token {auth_token} service database-delete --project {project} --dbname propertymeld {app_name}""".format
 create_db_cmd = """avn --auth-token {auth_token} service database-create --project {project} --dbname propertymeld {app_name}""".format
-pool_create_cmd = """avn --auth-token {auth_token} service connection-pool-create {app_name} --project {project} --dbname propertymeld --username avnadmin --pool-name propertymeld-pool --pool-size 50 --json""".format
+pool_create_cmd = """avn --auth-token {auth_token} service connection-pool-create {app_name} --project {project} --dbname defaultdb --username avnadmin --pool-name propertymeld-pool --pool-size 50 --json""".format
 pool_list_cmd = """avn --auth-token {auth_token} service connection-pool-list {app_name} --verbose --project {project} --json""".format
 
 config = {
