@@ -22,8 +22,8 @@ puts_step "deploy aiven instance"
 
 puts_step "$(invoke -r $BIN_DIR --list)"
 
-
-for TASK in service-create-aiven-db create-db-task create-pool-uri-and-set-env setup-review-app-database;do
+# pool has to be created last, pgbouncer has to be remade / disconnected  / reconnected for new tables after migration
+for TASK in service-create-aiven-db create-db-task setup-review-app-database create-pool-uri-and-set-env;do
     echo running invoke -r $BIN_DIR $TASK
     invoke -r $BIN_DIR $TASK
 done

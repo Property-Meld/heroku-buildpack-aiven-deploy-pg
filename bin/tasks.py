@@ -93,7 +93,6 @@ def do_popen(
         return json.loads(_stdout.decode("utf8"))
     return sanitize_output(_stdout.decode("utf8"))
 
-
 wait_cmd = """avn --auth-token {auth_token} service wait --project {project} {app_name}""".format
 list_cmd = """avn --auth-token {auth_token} service list --project {project} {app_name} --json""".format
 list_db_cmd = """avn --auth-token {auth_token} service database-list --project {project} {app_name} --json""".format
@@ -302,8 +301,8 @@ def is_review_app():
 @task
 def create_db_task(ctx):
     if is_review_app():
-        create_db(config)
-
+        database_uri = create_db(config)
+        set_heroku_env(config, pool_uri=database_uri)
 
 @task
 def create_pool_uri_and_set_env(ctx):
