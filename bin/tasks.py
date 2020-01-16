@@ -11,9 +11,36 @@ import re
 from urllib.parse import urlparse, urlunparse
 import random
 from subprocess import Popen, PIPE
-
 stdout = lambda x: sys.stdout.write(x + '\n')
 stderr = lambda x: sys.stderr.write(x + '\n')
+
+
+db_name = os.environ.get("DBNAME", "propertymeld")
+staging_app_name = os.environ.get("STAGING_APP_NAME", "property-meld-staging")
+
+wait_cmd = """avn --auth-token {auth_token} service wait --project {project} {app_name}""".format
+list_cmd = """avn --auth-token {auth_token} service list --project {project} {app_name} --json""".format
+list_db_cmd = """avn --auth-token {auth_token} service database-list --project {project} {app_name} --json""".format
+service_create_cmd = """avn --auth-token {auth_token} service create --project {project} --service-type {service_type} --plan {plan} --cloud {cloud} -c {pg_version} {app_name}""".format
+service_terminate_cmd = """avn --auth-token {auth_token} service terminate --force --project {project} {app_name}""".format
+delete_db_cmd = f"""avn --auth-token {{auth_token}} service database-delete --project {{project}} --dbname {db_name} {{app_name}}""".format
+create_db_cmd = f"""avn --auth-token {{auth_token}} service database-create --project {{project}} --dbname {db_name} {{app_name}}""".format
+pool_create_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-create {{app_name}} --project {{project}} --dbname defaultdb --username avnadmin --pool-name {db_name}-pool --pool-size 50 --json""".format
+pool_list_cmd = """avn --auth-token {auth_token} service connection-pool-list {app_name} --verbose --project {project} --json""".format
+pool_delete_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-delete {{app_name}} --project {{project}} --pool-name {db_name}-pool --json""".format
+
+config = {
+    "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku staging env vars in dashboard "reveal config vars", and aiven console
+    "app_name": f"{os.environ.get('HEROKU_APP_NAME', ''.join(random.choices(string.ascii_lowercase, k=14)))}",
+    "project": os.environ.get("AIVEN_PROJECT_NAME", "propertymeld-f3df"),
+}
+service_config = {
+    "cloud": "do-nyc",
+    "service_type": "pg",
+    "plan": "startup-4",  # hobbyist does not support pooling
+    "pg_version": "pg_version=12",
+}
+
 
 def get_heroku_env():
     if os.environ.get("HEROKU_APP_NAME"):
@@ -32,10 +59,9 @@ def get_heroku_env():
             exit(8)
     return {}
 
-
 heroku_bin = os.environ.get("HEROKU_BIN", get_heroku_env().get("HEROKU_BIN", ""))
-
 print(f"HEROKU_BIN: {heroku_bin}")
+
 if not heroku_bin:
     stderr('heroku_bin not set')
     exit(1)
@@ -93,29 +119,6 @@ def do_popen(
         return json.loads(_stdout.decode("utf8"))
     return sanitize_output(_stdout.decode("utf8"))
 
-wait_cmd = """avn --auth-token {auth_token} service wait --project {project} {app_name}""".format
-list_cmd = """avn --auth-token {auth_token} service list --project {project} {app_name} --json""".format
-list_db_cmd = """avn --auth-token {auth_token} service database-list --project {project} {app_name} --json""".format
-service_create_cmd = """avn --auth-token {auth_token} service create --project {project} --service-type {service_type} --plan {plan} --cloud {cloud} -c {pg_version} {app_name}""".format
-pool_delete_cmd = """avn --auth-token {auth_token} service connection-pool-delete {app_name} --project {project} --pool-name propertymeld-pool --json""".format
-delete_db_cmd = """avn --auth-token {auth_token} service database-delete --project {project} --dbname propertymeld {app_name}""".format
-create_db_cmd = """avn --auth-token {auth_token} service database-create --project {project} --dbname propertymeld {app_name}""".format
-pool_create_cmd = """avn --auth-token {auth_token} service connection-pool-create {app_name} --project {project} --dbname defaultdb --username avnadmin --pool-name propertymeld-pool --pool-size 50 --json""".format
-pool_list_cmd = """avn --auth-token {auth_token} service connection-pool-list {app_name} --verbose --project {project} --json""".format
-
-config = {
-    "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku staging env vars in dashboard "reveal config vars", and aiven console
-    "app_name": f"{os.environ.get('HEROKU_APP_NAME', ''.join(random.choices(string.ascii_lowercase, k=14)))}",
-    "project": os.environ.get("AIVEN_PROJECT_NAME", "propertymeld-f3df"),
-}
-service_config = {
-    "cloud": "do-nyc",
-    "service_type": "pg",
-    "plan": "startup-4",  # hobbyist does not support pooling
-    "pg_version": "pg_version=12",
-}
-
-
 def wait_for_service(config):
     stdout("Aiven: Waiting for db instance status to be in 'running' state.")
     do_popen(
@@ -151,7 +154,7 @@ def create_db(config) -> str:
     db = None
     while not db:
         stdout("Trying to create db.")
-        db = "propertymeld" in do_popen(
+        db = db_name in do_popen(
             list_db_cmd(**config),
             err_msg="Error while listing databases in service.",
             _json=True,
@@ -161,7 +164,7 @@ def create_db(config) -> str:
         try:
             do_popen(
                 create_db_cmd(**config),
-                err_msg="Failed to create database propertymeld.",
+                err_msg=f"Failed to create database {db_name}",
                 quiet=True,
             )
         except Exception as e:
@@ -325,14 +328,12 @@ def setup_review_app_database(ctx):
                 try:
                     time.sleep(10)
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
-                    # run(f"{heroku_bin} pg:backups capture --app property-meld-staging")
-                    # "curl `{heroku_bin} pg:backups:public-url --app {os.environ.get('STAGING_NAME', 'property-meld-staging')}`"
                     aiven_db_url = results.get("AIVEN_DATABASE_URL").format(
                         user=results.get("AIVEN_PG_USER"),
                         password=results.get("AIVEN_PG_PASSWORD"),
                     )
                     run(
-                        f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app property-meld-staging` | psql {aiven_db_url}"
+                        f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
                     )
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                 except ReferenceError as e:
@@ -342,38 +343,8 @@ def setup_review_app_database(ctx):
 
 @task
 def aiven_teardown_db(ctx):
-    app_name = os.environ.get("AIVEN_APP_NAME")
     stdout(f"Aiven: Attempting to teardown service. {app_name}")
-    auth_token = f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"'
-    project = os.environ.get("AIVEN_PROJECT_NAME", "propertymeld-f3df")
-    assert auth_token
-    assert app_name
-    assert project
-    pool_delete_cmd = [
-        "avn",
-        "--auth-token",
-        auth_token,
-        "service",
-        "connection-pool-delete",
-        app_name,
-        "--project",
-        project,
-        "--pool-name",
-        "propertymeld-pool",
-        "--json",
-    ]
-    do_popen(pool_delete_cmd, err_msg="Failed to delete pool.")
-    stdout(f'Service: {app_name} postgres pool deleted')
-    cmd = [
-        "avn",
-        "--auth-token",
-        auth_token,
-        "service",
-        "terminate",
-        "--force",
-        "--project",
-        project,
-        app_name,
-    ]
-    do_popen(cmd, f"Unable to teardown service: {app_name}")
-    stdout(f'Service: {app_name} deleted.')
+    do_popen(pool_delete_cmd(**config), err_msg="Failed to delete pool.")
+    stdout(f'Service: {config.get("app_name")} postgres pool deleted')
+    do_popen(service_terminate_cmd(**config), f"Unable to teardown service: {app_name}")
+    stdout(f'Service: {config.get("project")} deleted.')
