@@ -29,10 +29,14 @@ pool_create_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-cr
 pool_list_cmd = """avn --auth-token {auth_token} service connection-pool-list {app_name} --verbose --project {project} --json""".format
 pool_delete_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-delete {{app_name}} --project {{project}} --pool-name {db_name}-pool --json""".format
 
+assert os.environ.get("AIVEN_PROJECT_NAME")
+assert os.environ.get("AIVEN_AUTH_TOKEN")
+assert os.environ.get('HEROKU_APP_NAME')
+
 config = {
     "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku staging env vars in dashboard "reveal config vars", and aiven console
-    "app_name": f"{os.environ.get('HEROKU_APP_NAME', ''.join(random.choices(string.ascii_lowercase, k=14)))}",
-    "project": os.environ.get("AIVEN_PROJECT_NAME", "propertymeld-f3df"),
+    "app_name": f"{os.environ.get('HEROKU_APP_NAME')}",
+    "project": os.environ.get("AIVEN_PROJECT_NAME"),
 }
 service_config = {
     "cloud": "do-nyc",
