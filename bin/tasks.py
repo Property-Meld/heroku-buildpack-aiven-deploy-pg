@@ -93,19 +93,14 @@ def do_popen(
         return json.loads(_stdout.decode("utf8"))
     return sanitize_output(_stdout.decode("utf8"))
 
-db_name = os.environ.get("DB_NAME", "propertymeld")
-staging_app_name = os.environ.get("STAGING_APP_NAME", "property-meld-staging")
-
 wait_cmd = """avn --auth-token {auth_token} service wait --project {project} {app_name}""".format
 list_cmd = """avn --auth-token {auth_token} service list --project {project} {app_name} --json""".format
 list_db_cmd = """avn --auth-token {auth_token} service database-list --project {project} {app_name} --json""".format
 service_create_cmd = """avn --auth-token {auth_token} service create --project {project} --service-type {service_type} --plan {plan} --cloud {cloud} -c {pg_version} {app_name}""".format
-pool_delete_cmd = """avn --auth-token {auth_token} service connection-pool-delete {app_name} --project {project} --pool-name {db_name}-pool --json""".format
-delete_db_cmd = """avn --auth-token {auth_token} service database-delete --project {project} --dbname {db_name} {app_name}""".format
-create_db_cmd = """avn --auth-token {auth_token} service database-create --project {project} --dbname {db_name} {app_name}""".format
-
-pool_create_cmd = """avn --auth-token {auth_token} service connection-pool-create {app_name} --project {project} --dbname defaultdb --username avnadmin --pool-name {db_name}-pool --pool-size 50 --json""".format
-
+pool_delete_cmd = """avn --auth-token {auth_token} service connection-pool-delete {app_name} --project {project} --pool-name propertymeld-pool --json""".format
+delete_db_cmd = """avn --auth-token {auth_token} service database-delete --project {project} --dbname propertymeld {app_name}""".format
+create_db_cmd = """avn --auth-token {auth_token} service database-create --project {project} --dbname propertymeld {app_name}""".format
+pool_create_cmd = """avn --auth-token {auth_token} service connection-pool-create {app_name} --project {project} --dbname defaultdb --username avnadmin --pool-name propertymeld-pool --pool-size 50 --json""".format
 pool_list_cmd = """avn --auth-token {auth_token} service connection-pool-list {app_name} --verbose --project {project} --json""".format
 
 config = {
@@ -113,12 +108,11 @@ config = {
     "app_name": f"{os.environ.get('HEROKU_APP_NAME', ''.join(random.choices(string.ascii_lowercase, k=14)))}",
     "project": os.environ.get("AIVEN_PROJECT_NAME", "propertymeld-f3df"),
 }
-
 service_config = {
-    "cloud": os.environ.get("AIVEN_REGION", "do-nyc"),
-    "service_type": os.environ.get("AIVEN_DB_SERVICE_TYPE", "pg"),
-    "plan": os.environ.get("AIVEN_DB_SERVICE_SIZE", "startup-4"),  # hobbyist does not support pooling
-    "pg_version": os.environ.get("AIVEN_DB_VERSION", "pg_version=12"),
+    "cloud": "do-nyc",
+    "service_type": "pg",
+    "plan": "startup-4",  # hobbyist does not support pooling
+    "pg_version": "pg_version=12",
 }
 
 
@@ -157,7 +151,7 @@ def create_db(config) -> str:
     db = None
     while not db:
         stdout("Trying to create db.")
-        db = db_name in do_popen(
+        db = "propertymeld" in do_popen(
             list_db_cmd(**config),
             err_msg="Error while listing databases in service.",
             _json=True,
@@ -166,8 +160,8 @@ def create_db(config) -> str:
             break
         try:
             do_popen(
-                create_db_cmd({"db_name": db_name, **config}),
-                err_msg=f"Failed to create database {db_name}",
+                create_db_cmd(**config),
+                err_msg="Failed to create database propertymeld.",
                 quiet=True,
             )
         except Exception as e:
@@ -186,7 +180,7 @@ def create_pool(config) -> str:
     )
     if len(result):
         return result[0].get("connection_uri")
-    do_popen(pool_create_cmd({"db_name": db_name, **config}), err_msg="Failed to create pool.")
+    do_popen(pool_create_cmd(**config), err_msg="Failed to create pool.")
     time.sleep(1)
     result = do_popen(
         pool_list_cmd(**config), err_msg="Failed to list pool.", _json=True
@@ -196,7 +190,7 @@ def create_pool(config) -> str:
 
 def clear_pre_existing_pool(config):
     try:
-        do_popen(pool_delete_cmd({"db_name": db_name, **config}), err_msg="Skipping delete pool.", quiet=True)
+        do_popen(pool_delete_cmd(**config), err_msg="Skipping delete pool.", quiet=True)
     except Exception as e:
         stdout(f"quiet error: {str(e)}")
     time.sleep(10)
@@ -331,12 +325,14 @@ def setup_review_app_database(ctx):
                 try:
                     time.sleep(10)
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
+                    # run(f"{heroku_bin} pg:backups capture --app property-meld-staging")
+                    # "curl `{heroku_bin} pg:backups:public-url --app {os.environ.get('STAGING_NAME', 'property-meld-staging')}`"
                     aiven_db_url = results.get("AIVEN_DATABASE_URL").format(
                         user=results.get("AIVEN_PG_USER"),
                         password=results.get("AIVEN_PG_PASSWORD"),
                     )
                     run(
-                        f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
+                        f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app property-meld-staging` | psql {aiven_db_url}"
                     )
                     set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                 except ReferenceError as e:
@@ -353,7 +349,20 @@ def aiven_teardown_db(ctx):
     assert auth_token
     assert app_name
     assert project
-    do_popen(pool_delete_cmd({"db_name": db_name, **config}), err_msg="Failed to delete pool.")
+    pool_delete_cmd = [
+        "avn",
+        "--auth-token",
+        auth_token,
+        "service",
+        "connection-pool-delete",
+        app_name,
+        "--project",
+        project,
+        "--pool-name",
+        "propertymeld-pool",
+        "--json",
+    ]
+    do_popen(pool_delete_cmd, err_msg="Failed to delete pool.")
     stdout(f'Service: {app_name} postgres pool deleted')
     cmd = [
         "avn",
