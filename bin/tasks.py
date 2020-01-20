@@ -39,10 +39,10 @@ config = {
     "project": os.environ.get("AIVEN_PROJECT_NAME"),
 }
 service_config = {
-    "cloud": "do-nyc",
-    "service_type": "pg",
-    "plan": "startup-4",  # hobbyist does not support pooling
-    "pg_version": "pg_version=12",
+    "cloud": os.environ.get("AIVEN_CLOUD", "do-nyc"),
+    "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg"),
+    "plan": os.environ.get("AIVEN_PLAN", "startup-4"),  # hobbyist does not support pooling
+    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12"),
 }
 
 
