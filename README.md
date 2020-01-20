@@ -3,6 +3,7 @@ Deploy postgres db to aiven.
 
 Requires:
 
+- https://github.com/heroku/heroku-buildpack-cli
 - https://github.com/heroku/heroku-buildpack-python
 
 Requirements in `app.json`:
