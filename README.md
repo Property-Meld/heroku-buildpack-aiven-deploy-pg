@@ -18,7 +18,7 @@ Requirements in `app.json`:
       "url": "https://github.com/heroku/heroku-buildpack-python"
     },
     {
-      "url": "https://github.com/Property-Meld/heroku-buildpack-aiven-deploy"
+      "url": "https://github.com/Property-Meld/heroku-buildpack-aiven-deploy-pg"
     }
   ]
 }
