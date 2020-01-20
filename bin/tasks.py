@@ -15,7 +15,7 @@ stdout = lambda x: sys.stdout.write(x + '\n')
 stderr = lambda x: sys.stderr.write(x + '\n')
 
 
-db_name = os.environ.get("DBNAME", "propertymeld")
+db_name = os.environ.get("AIVEN_DBNAME", "propertymeld")
 staging_app_name = os.environ.get("STAGING_APP_NAME", "property-meld-staging")
 
 wait_cmd = """avn --auth-token {auth_token} service wait --project {project} {app_name}""".format
