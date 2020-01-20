@@ -40,6 +40,5 @@ HEROKU_APP_NAME # get in aiven ( aiven project name ), be sure to  set in pipeli
 HEROKU_BIN # location of the heroku_bin
 IS_REVIEW_APP # set in pipeline/heroku config vars
 STAGING_APP_NAME # name of the heroku staging app name for usage with heroku cli
-STAGING_DATABASE_URL # points to the pg instance of a staging db postgres url for cloning into review app.
 ```
 

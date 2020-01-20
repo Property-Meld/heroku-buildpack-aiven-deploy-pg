@@ -262,7 +262,6 @@ def remove_postgres_addon():
 @task
 def service_create_aiven_db(ctx):
     """
-    export STAGING_DATABASE_URL=postgresql://###:###@127.0.0.1:5432/###
     export AIVEN_PROJECT_NAME="###"
     export HEROKU_PARENT_APP_NAME=testing
     export AIVEN_APP_NAME='hello'
