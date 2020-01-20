@@ -5,7 +5,7 @@ Requires:
 
 - https://github.com/heroku/heroku-buildpack-python
 
-Example `app.json`:
+Requirements in `app.json`:
 ===
 
 ```json
