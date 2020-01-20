@@ -8,6 +8,9 @@ echo $(ls -la .)
 ########### app.json requirements
 #  "buildpacks": [
 #    {
+#      "url": "https://github.com/heroku/heroku-buildpack-cli"
+#    },
+#    {
 #      "url": "https://github.com/heroku/heroku-buildpack-python"
 #    },
 #   ],

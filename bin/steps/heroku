@@ -4,32 +4,39 @@ source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/
 
 HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
 
-puts_step "Fetching and vendoring Heroku CLI into slug"
-rm -rf "$BUILD_DIR/.heroku/cli"
-mkdir -p "$BUILD_DIR/.heroku/cli"
-mkdir -p "$BUILD_DIR/.heroku/bin"
-cd "$BUILD_DIR/.heroku/cli"
+if ! [ -x "$(command -v heroku)" ]; then
+    puts_step "Fetching and vendoring Heroku CLI into slug"
+    rm -rf "$BUILD_DIR/.heroku/cli"
+    mkdir -p "$BUILD_DIR/.heroku/cli"
+    mkdir -p "$BUILD_DIR/.heroku/bin"
+    cd "$BUILD_DIR/.heroku/cli"
 
-if [[ -z "$(which curl)" ]]; then
-  wget -qO- $HEROKU_CLI_URL | tar xJ --strip-components 1
-else
-  curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
-fi
-ln -s "../cli/bin/heroku" "$BUILD_DIR/.heroku/bin/heroku"
+    if [[ -z "$(which curl)" ]]; then
+      echo "    wget: $HEROKU_CLI_URL"
+      wget -qO- $HEROKU_CLI_URL | tar xJ --strip-components 1
+    else
+      echo "    curl: $HEROKU_CLI_URL"
+      curl -s --retry 3 $HEROKU_CLI_URL | tar xJ --strip-components 1
+    fi
+    ln -s "../cli/bin/heroku" "$BUILD_DIR/.heroku/bin/heroku"
 
-puts_step "Installing profile.d script"
-mkdir -p "$BUILD_DIR/.profile.d"
-cat <<EOF > "$BUILD_DIR/.profile.d/heroku-cli.sh"
+    puts_step "Installing profile.d script"
+    mkdir -p "$BUILD_DIR/.profile.d"
+    cat <<EOF > "$BUILD_DIR/.profile.d/heroku-cli.sh"
 export PATH="\$PATH:\$HOME/.heroku/bin"
 export HEROKU_SKIP_ANALYTICS=1
 export HEROKU_DISABLE_AUTOUPDATE=1
 EOF
-chmod +x "$BUILD_DIR/.profile.d/heroku-cli.sh"
+    chmod +x "$BUILD_DIR/.profile.d/heroku-cli.sh"
 
-export HEROKU_BIN="$BUILD_DIR/.heroku/bin/heroku"
+    export HEROKU_BIN="$BUILD_DIR/.heroku/bin/heroku"
 
-"$BUILD_DIR/.heroku/bin/heroku" version
-puts_step "Heroku CLI installation done"
+    "$BUILD_DIR/.heroku/bin/heroku" version
+    puts_step "Heroku CLI installation done"
+else
+    echo 'heroku version:'
+    echo     "$(heroku --version)"
+fi
 
 if [ -d "$ENV_DIR" ]; then
   export "HEROKU_API_KEY=$(cat $ENV_DIR/HEROKU_API_KEY)"
