@@ -40,10 +40,10 @@ config = {
 }
 
 service_config = {
-    "cloud": os.environ.get("AIVEN_CLOUD", "do-nyc"),
-    "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg"),
-    "plan": os.environ.get("AIVEN_PLAN", "startup-4"),  # hobbyist does not support pooling
-    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12"),
+    "cloud": os.environ.get("AIVEN_CLOUD", "do-nyc") or 'do-nyc',
+    "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg") or 'pg',
+    "plan": os.environ.get("AIVEN_PLAN", "startup-4") or "startup-4",  # hobbyist does not support pooling
+    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12") or "pg_version=12",
 }
 
 stdout(f"service_config: {service_config}")
