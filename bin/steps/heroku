@@ -5,6 +5,7 @@ source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/
 
 if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
     source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+    export HEROKU_BIN="$BUILD_DIR/.heroku/bin/heroku"
 fi
 
 if [ -d "$ENV_DIR" ]; then
