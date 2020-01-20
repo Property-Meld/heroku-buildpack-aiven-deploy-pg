@@ -4,6 +4,10 @@ source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/
 
 HEROKU_CLI_URL="https://cli-assets.heroku.com/heroku-linux-x64.tar.xz"
 
+if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
+    source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+fi
+
 if ! [ -x "$(command -v heroku)" ]; then
     puts_step "Fetching and vendoring Heroku CLI into slug"
     rm -rf "$BUILD_DIR/.heroku/cli"
