@@ -3,6 +3,8 @@
 
 echo 'aiven-deploy-detect'
 
+BUILD_DIR=$1
+
 echo $(ls -la .)
 
 ########### app.json requirements
@@ -23,6 +25,14 @@ else
   echo 'python version:'
   echo     "$(python --version)"
 fi
+
+if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
+    source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+else
+    echo "heroku buildpack not installed in app.json buildpacks: https://github.com/heroku/heroku-buildpack-cli" >&2
+    exit 1
+fi
+
 
 python -c "import pip"
 python -c "import invoke"

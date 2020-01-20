@@ -9,7 +9,7 @@ ENV_DIR=$3
 echo $0
 BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 
-# install heroku cli, stdlib, export keys
+# stdlib, export keys
 source "$BIN_DIR/steps/heroku"
 
 source "$BIN_DIR/steps/displayinfo"
