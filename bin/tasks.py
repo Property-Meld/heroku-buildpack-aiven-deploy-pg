@@ -38,6 +38,7 @@ config = {
     "app_name": f"{os.environ.get('HEROKU_APP_NAME')}",
     "project": os.environ.get("AIVEN_PROJECT_NAME"),
 }
+
 service_config = {
     "cloud": os.environ.get("AIVEN_CLOUD", "do-nyc"),
     "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg"),
@@ -45,6 +46,7 @@ service_config = {
     "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12"),
 }
 
+stdout(f"service_config: {service_config}")
 
 def get_heroku_env():
     if os.environ.get("HEROKU_APP_NAME"):
@@ -64,7 +66,7 @@ def get_heroku_env():
     return {}
 
 heroku_bin = os.environ.get("HEROKU_BIN", get_heroku_env().get("HEROKU_BIN", ""))
-print(f"HEROKU_BIN: {heroku_bin}")
+stdout(f"HEROKU_BIN: {heroku_bin}")
 
 if not heroku_bin:
     stderr('heroku_bin not set')
