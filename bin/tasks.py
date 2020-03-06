@@ -324,28 +324,33 @@ def create_pool_uri_and_set_env(ctx):
 @task
 def setup_review_app_database(ctx):
     if is_review_app():
-        results = get_heroku_env()
-        if not results.get("AIVEN_DATABASE_URL"):
-            stderr("Failed to set AIVEN_DATABASE_URL")
-            exit(6)
-        try:
-            if not results.get('REVIEW_APP_HAS_STAGING_DB', ''):
-                try:
-                    time.sleep(10)
-                    set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
-                    aiven_db_url = results.get("AIVEN_DATABASE_URL").format(
-                        user=results.get("AIVEN_PG_USER"),
-                        password=results.get("AIVEN_PG_PASSWORD"),
-                    )
-                    run(
-                        f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
-                    )
-                    set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
-                except ReferenceError as e:
-                    set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
-        except invoke.Failure:
-            stderr("errors encountered when restoring DB")
-
+        while True:
+            results = get_heroku_env()
+            if not results.get("AIVEN_DATABASE_URL") or 'pool' in results.get("AIVEN_DATABASE_URL"):
+                stderr(f"Failed to set AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL'))}")
+                exit(6)
+            try:
+                if not results.get('REVIEW_APP_HAS_STAGING_DB', '') or results.get('REVIEW_APP_HAS_STAGING_DB', '') == 'False':
+                    try:
+                        time.sleep(10)
+                        aiven_db_url = results.get("AIVEN_DATABASE_URL").format(
+                            user=results.get("AIVEN_PG_USER"),
+                            password=results.get("AIVEN_PG_PASSWORD"),
+                        )
+                        set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
+                        run(
+                            f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
+                        )
+                        set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
+                        break
+                    except ReferenceError as e:
+                        set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
+                        break
+                else:
+                    break
+            except invoke.Failure:
+                stderr("errors encountered when restoring DB")
+                break
 @task
 def aiven_teardown_db(ctx):
     stdout(f"Aiven: Attempting to teardown service. {app_name}")
