@@ -334,15 +334,22 @@ def setup_review_app_database(ctx):
                 if not results.get('REVIEW_APP_HAS_STAGING_DB', '') or results.get('REVIEW_APP_HAS_STAGING_DB', '') == 'False':
                     try:
                         time.sleep(10)
-                        aiven_db_url = results.get("AIVEN_DATABASE_URL").format(
-                            user=results.get("AIVEN_PG_USER"),
-                            password=results.get("AIVEN_PG_PASSWORD"),
-                        )
                         set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
                         try:
-                            run(
-                                f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
+                            original = run(f'{heroku_bin} config:get DATABASE_URL --app {staging_app_name}').stdout.strip()
+                            aiven = run(f'{heroku_bin} config:get AIVEN_DATABASE_URL --app {staging_app_name}').stdout.strip()
+                            aiven_db_url = (original or aiven).format(
+                                user=results.get("AIVEN_PG_USER"),
+                                password=results.get("AIVEN_PG_PASSWORD"),
                             )
+                            if not original:
+                                stdout(f'running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}')
+                            result = run(
+                                f"pg_dump --no-privileges --no-owner {original or aiven} | psql {aiven_db_url}"
+                            )
+                            if result.return_code:
+                                stderr(result.stderr)
+                                continue
                             set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                             break
                         except Exception as e:
