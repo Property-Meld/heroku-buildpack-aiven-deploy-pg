@@ -331,66 +331,58 @@ def create_pool_uri_and_set_env(ctx):
 @task
 def setup_review_app_database(ctx):
     if is_review_app():
-        while True:
-            results = get_heroku_env()
-            if not results.get("AIVEN_DATABASE_URL") or "pool" in results.get(
-                "AIVEN_DATABASE_URL"
+        results = get_heroku_env()
+        if not results.get("AIVEN_DATABASE_URL") or "pool" in results.get(
+            "AIVEN_DATABASE_URL"
+        ):
+            stderr(
+                f"Failed to get AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL', ''))}"
+            )
+            exit(6)
+        try:
+            if (
+                not results.get("REVIEW_APP_HAS_STAGING_DB", "")
+                or results.get("REVIEW_APP_HAS_STAGING_DB", "") == "False"
             ):
-                stderr(
-                    f"Failed to get AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL', ''))}"
-                )
-                time.sleep(10)
-                continue
-            try:
-                if (
-                    not results.get("REVIEW_APP_HAS_STAGING_DB", "")
-                    or results.get("REVIEW_APP_HAS_STAGING_DB", "") == "False"
-                ):
-                    try:
-                        time.sleep(10)
-                        set_heroku_env(
-                            config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "False"}
-                        )
-                        try:
-                            original = run(
-                                f"{heroku_bin} config:get DATABASE_URL --app {staging_app_name}"
-                            ).stdout.strip()
-                            aiven = run(
-                                f"{heroku_bin} config:get AIVEN_DATABASE_URL --app {staging_app_name}"
-                            ).stdout.strip()
-                            aiven_db_url = (original or aiven).format(
-                                user=results.get("AIVEN_PG_USER"),
-                                password=results.get("AIVEN_PG_PASSWORD"),
-                            )
-                            if not original:
-                                stdout(
-                                    f"running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}"
-                                )
-                            result = run(
-                                f"pg_dump --no-privileges --no-owner {original or aiven} | psql {aiven_db_url}"
-                            )
-                            if result.return_code:
-                                stderr(result.stderr)
-                                continue
-                            set_heroku_env(
-                                config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "True"}
-                            )
-                            break
-                        except Exception as e:
-                            stderr(sanitize_output(str(e)))
-                    except ReferenceError as e:
-                        set_heroku_env(
-                            config, add_vars={"REVIEW_APP_HAS_STAGING_DB": ""}
-                        )
-                        break
-                else:
-                    stdout(
-                        f"REVIEW_APP_HAS_STAGING_DB: {results.get('REVIEW_APP_HAS_STAGING_DB', '')}"
+                try:
+                    time.sleep(10)
+                    set_heroku_env(
+                        config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "False"}
                     )
-                    break
-            except invoke.Failure:
-                stderr("errors encountered when restoring DB")
-                break
+                    # orignal heroku staging db
+                    original = run(
+                        f"{heroku_bin} config:get DATABASE_URL --app {staging_app_name}"
+                    ).stdout.strip()
+                    # if the original heorku db has been detached try to look for AIVEN_DATABASE_URL
+                    aiven = run(
+                        f"{heroku_bin} config:get AIVEN_DATABASE_URL --app {staging_app_name}"
+                    ).stdout.strip()
+                    aiven_db_url = (original or aiven).format(
+                        user=results.get("AIVEN_PG_USER"),
+                        password=results.get("AIVEN_PG_PASSWORD"),
+                    )
+                    if not original:
+                        stdout(
+                            f"running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}"
+                        )
+                    result = run(
+                        f"pg_dump --no-privileges --no-owner {original or aiven} | psql {aiven_db_url}"
+                    )
+                    if result.return_code:
+                        stderr(result.stderr)
+                        exit(7)
+                    set_heroku_env(
+                        config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "True"}
+                    )
+                except ReferenceError as e:
+                    set_heroku_env(config, add_vars={"REVIEW_APP_HAS_STAGING_DB": ""})
+            else:
+                stdout(
+                    f"REVIEW_APP_HAS_STAGING_DB: {results.get('REVIEW_APP_HAS_STAGING_DB', '')}"
+                )
+        except invoke.Failure:
+            stderr("errors encountered when restoring DB")
+            exit(8)
 
 
 @task
