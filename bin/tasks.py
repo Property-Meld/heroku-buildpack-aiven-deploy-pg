@@ -366,9 +366,12 @@ def setup_review_app_database(ctx):
                     aiven = run(
                         f"{heroku_bin} config:get AIVEN_DATABASE_DIRECT_URL --app {staging_app_name}"
                     ).stdout.strip()
+                    aiven_pg_password = run(
+                        f"{heroku_bin} config:get AIVEN_PG_PASSWORD --app {staging_app_name}"
+                    ).stdout.strip()
                     aiven_db_url = (original or aiven).format(
                         user=results.get("AIVEN_PG_USER"),
-                        password=results.get("AIVEN_PG_PASSWORD"),
+                        password=aiven_pg_password,
                     )
 
                     if not original:
