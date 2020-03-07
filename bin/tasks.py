@@ -11,8 +11,9 @@ import re
 from urllib.parse import urlparse, urlunparse
 import random
 from subprocess import Popen, PIPE
-stdout = lambda x: sys.stdout.write(x + '\n')
-stderr = lambda x: sys.stderr.write(x + '\n')
+
+stdout = lambda x: sys.stdout.write(x + "\n")
+stderr = lambda x: sys.stderr.write(x + "\n")
 
 
 db_name = os.environ.get("AIVEN_DBNAME", "propertymeld")
@@ -31,7 +32,7 @@ pool_delete_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-de
 
 assert os.environ.get("AIVEN_PROJECT_NAME")
 assert os.environ.get("AIVEN_AUTH_TOKEN")
-assert os.environ.get('HEROKU_APP_NAME')
+assert os.environ.get("HEROKU_APP_NAME")
 
 config = {
     "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku staging env vars in dashboard "reveal config vars", and aiven console
@@ -40,13 +41,16 @@ config = {
 }
 
 service_config = {
-    "cloud": os.environ.get("AIVEN_CLOUD", "do-nyc") or 'do-nyc',
-    "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg") or 'pg',
-    "plan": os.environ.get("AIVEN_PLAN", "startup-4") or "startup-4",  # hobbyist does not support pooling
-    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12") or "pg_version=12",
+    "cloud": os.environ.get("AIVEN_CLOUD", "do-nyc") or "do-nyc",
+    "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg") or "pg",
+    "plan": os.environ.get("AIVEN_PLAN", "startup-4")
+    or "startup-4",  # hobbyist does not support pooling
+    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12")
+    or "pg_version=12",
 }
 
 stdout(f"service_config: {service_config}")
+
 
 def get_heroku_env():
     if os.environ.get("HEROKU_APP_NAME"):
@@ -65,11 +69,12 @@ def get_heroku_env():
             exit(8)
     return {}
 
+
 heroku_bin = os.environ.get("HEROKU_BIN", get_heroku_env().get("HEROKU_BIN", ""))
 stdout(f"HEROKU_BIN: {heroku_bin}")
 
 if not heroku_bin:
-    stderr('heroku_bin not set')
+    stderr("heroku_bin not set")
     exit(1)
 
 
@@ -124,6 +129,7 @@ def do_popen(
     if _json:
         return json.loads(_stdout.decode("utf8"))
     return sanitize_output(_stdout.decode("utf8"))
+
 
 def wait_for_service(config):
     stdout("Aiven: Waiting for db instance status to be in 'running' state.")
@@ -205,8 +211,8 @@ def clear_pre_existing_pool(config):
     time.sleep(10)
 
 
-def set_heroku_env(config, pool_uri=None, add_vars: dict={}):
-    assert (pool_uri or add_vars)
+def set_heroku_env(config, pool_uri=None, add_vars: dict = {}):
+    assert pool_uri or add_vars
     if os.environ.get("HEROKU_APP_NAME"):
         if pool_uri:
             parsed_uri = urlparse(pool_uri)
@@ -221,13 +227,13 @@ def set_heroku_env(config, pool_uri=None, add_vars: dict={}):
                 )
             )
             to_json = {
-                    "AIVEN_APP_NAME": config.get("app_name"),
-                    "AIVEN_DATABASE_URL": db_env_uri,
-                    "AIVEN_PG_USER": parsed_uri.username,
-                    "AIVEN_PG_PORT": parsed_uri.port,
-                    "AIVEN_PG_PASSWORD": parsed_uri.password,
-                    **add_vars
-                }
+                "AIVEN_APP_NAME": config.get("app_name"),
+                "AIVEN_DATABASE_URL": db_env_uri,
+                "AIVEN_PG_USER": parsed_uri.username,
+                "AIVEN_PG_PORT": parsed_uri.port,
+                "AIVEN_PG_PASSWORD": parsed_uri.password,
+                **add_vars,
+            }
             data = json.dumps(to_json)
         else:
             to_json = add_vars
@@ -302,7 +308,7 @@ def service_create_aiven_db(ctx):
 def is_review_app():
     is_ra = os.environ.get("IS_REVIEW_APP", False).lower() == "true"
     if not is_ra:
-        stdout(f'IS_REVIEW_APP: {is_ra}')
+        stdout(f"IS_REVIEW_APP: {is_ra}")
     return is_ra
 
 
@@ -311,6 +317,7 @@ def create_db_task(ctx):
     if is_review_app():
         database_uri = create_db(config)
         set_heroku_env(config, pool_uri=database_uri)
+
 
 @task
 def create_pool_uri_and_set_env(ctx):
@@ -326,43 +333,66 @@ def setup_review_app_database(ctx):
     if is_review_app():
         while True:
             results = get_heroku_env()
-            if not results.get("AIVEN_DATABASE_URL") or 'pool' in results.get("AIVEN_DATABASE_URL"):
-                stderr(f"Failed to get AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL', ''))}")
+            if not results.get("AIVEN_DATABASE_URL") or "pool" in results.get(
+                "AIVEN_DATABASE_URL"
+            ):
+                stderr(
+                    f"Failed to get AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL', ''))}"
+                )
                 time.sleep(10)
                 continue
             try:
-                if not results.get('REVIEW_APP_HAS_STAGING_DB', '') or results.get('REVIEW_APP_HAS_STAGING_DB', '') == 'False':
+                if (
+                    not results.get("REVIEW_APP_HAS_STAGING_DB", "")
+                    or results.get("REVIEW_APP_HAS_STAGING_DB", "") == "False"
+                ):
                     try:
                         time.sleep(10)
-                        set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
+                        set_heroku_env(
+                            config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "False"}
+                        )
                         try:
-                            original = run(f'{heroku_bin} config:get DATABASE_URL --app {staging_app_name}').stdout.strip()
-                            aiven = run(f'{heroku_bin} config:get AIVEN_DATABASE_URL --app {staging_app_name}').stdout.strip()
+                            original = run(
+                                f"{heroku_bin} config:get DATABASE_URL --app {staging_app_name}"
+                            ).stdout.strip()
+                            aiven = run(
+                                f"{heroku_bin} config:get AIVEN_DATABASE_URL --app {staging_app_name}"
+                            ).stdout.strip()
                             aiven_db_url = (original or aiven).format(
                                 user=results.get("AIVEN_PG_USER"),
                                 password=results.get("AIVEN_PG_PASSWORD"),
                             )
                             if not original:
-                                stdout(f'running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}')
+                                stdout(
+                                    f"running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}"
+                                )
                             result = run(
                                 f"pg_dump --no-privileges --no-owner {original or aiven} | psql {aiven_db_url}"
                             )
                             if result.return_code:
                                 stderr(result.stderr)
                                 continue
-                            set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
+                            set_heroku_env(
+                                config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "True"}
+                            )
                             break
                         except Exception as e:
                             stderr(sanitize_output(str(e)))
                     except ReferenceError as e:
-                        set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
+                        set_heroku_env(
+                            config, add_vars={"REVIEW_APP_HAS_STAGING_DB": ""}
+                        )
                         break
                 else:
-                    stdout(f"REVIEW_APP_HAS_STAGING_DB: {results.get('REVIEW_APP_HAS_STAGING_DB', '')}")
+                    stdout(
+                        f"REVIEW_APP_HAS_STAGING_DB: {results.get('REVIEW_APP_HAS_STAGING_DB', '')}"
+                    )
                     break
             except invoke.Failure:
                 stderr("errors encountered when restoring DB")
                 break
+
+
 @task
 def aiven_teardown_db(ctx):
     stdout(f"Aiven: Attempting to teardown service. {app_name}")
