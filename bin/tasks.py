@@ -235,7 +235,7 @@ def set_heroku_env(config, pool_uri=None, direct_uri=None, add_vars: dict = {}):
 
             # createdb runs first
             if direct_uri:
-                stdout(f"Setting AIVEN_DATABASE_DIRECT_URL: {sanitize_output(db_env_uri)")
+                stdout(f"Setting AIVEN_DATABASE_DIRECT_URL: {sanitize_output(db_env_uri)}")
                 to_json = {**to_json, "AIVEN_DATABASE_DIRECT_URL": db_env_uri, "AIVEN_DIRECT_PG_PORT": parsed_uri.port}
 
             # final step creating the pool, and setting the pool uri to connect to via AIVEN_DATABASE_URL
