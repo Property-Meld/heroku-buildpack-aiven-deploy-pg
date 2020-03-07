@@ -211,11 +211,11 @@ def clear_pre_existing_pool(config):
     time.sleep(10)
 
 
-def set_heroku_env(config, pool_uri=None, add_vars: dict = {}):
-    assert pool_uri or add_vars
+def set_heroku_env(config, pool_uri=None, direct_uri=None, add_vars: dict = {}):
+    assert pool_uri or add_vars or direct_uri
     if os.environ.get("HEROKU_APP_NAME"):
         if pool_uri:
-            parsed_uri = urlparse(pool_uri)
+            parsed_uri = urlparse(pool_uri or direct_uri)
             db_env_uri = urlunparse(
                 (
                     parsed_uri.scheme,
@@ -228,12 +228,20 @@ def set_heroku_env(config, pool_uri=None, add_vars: dict = {}):
             )
             to_json = {
                 "AIVEN_APP_NAME": config.get("app_name"),
-                "AIVEN_DATABASE_URL": db_env_uri,
-                "AIVEN_PG_USER": parsed_uri.username,
-                "AIVEN_PG_PORT": parsed_uri.port,
-                "AIVEN_PG_PASSWORD": parsed_uri.password,
+                "AIVEN_PG_USER": parsed_uri.username,  # same in pool and direct db connection
+                "AIVEN_PG_PASSWORD": parsed_uri.password,  # same in pool and direct db connection
                 **add_vars,
             }
+
+            # createdb runs first
+            if direct_uri:
+                to_json = {**to_json, "AIVEN_DATABASE_DIRECT_URL": db_env_uri, "AIVEN_DIRECT_PG_PORT": parsed_uri.port}
+
+            # final step creating the pool, and setting the pool uri to connect to via AIVEN_DATABASE_URL
+            if pool_uri:
+                to_json = {**to_json, "AIVEN_DATABASE_URL": db_env_uri, "AIVEN_PG_PORT": parsed_uri.port}
+
+
             data = json.dumps(to_json)
         else:
             to_json = add_vars
@@ -248,8 +256,8 @@ def set_heroku_env(config, pool_uri=None, add_vars: dict = {}):
             },
         )
         if result.status_code in (200, 201, 202, 206):
-            stdout(f"AIVEN_APP_NAME env var set {config.get('app_name')}")
-            stdout(f"AIVEN_DATABASE_URL env var set {to_json.keys()}")
+            stdout(f"Configured Heroku application config vars: {config.get('app_name')}")
+            stdout(f"AIVEN env vars set: {to_json.keys()}")
         else:
             stderr(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
             exit(8)
@@ -281,14 +289,14 @@ def service_create_aiven_db(ctx):
         results = get_heroku_env()
         env_vars = [
             "AIVEN_APP_NAME",
-            "AIVEN_DATABASE_URL",
+            "AIVEN_DATABASE_DIRECT_URL",
             "AIVEN_PG_USER",
-            "AIVEN_PG_PORT",
+            "AIVEN_DIRECT_PG_PORT",
             "AIVEN_PG_PASSWORD",
         ]
         if all([x in results for x in env_vars]):
             stdout("Pre-existing db service found.")
-            return results.get("AIVEN_DATABASE_URL")
+            return results.get("AIVEN_DATABASE_DIRECT_URL")
         result = do_popen(
             list_cmd(**config),
             err_msg=f"Failed to list services for: {config.get('project')} {str(config.get('app_name'))}.",
@@ -316,14 +324,14 @@ def is_review_app():
 def create_db_task(ctx):
     if is_review_app():
         database_uri = create_db(config)
-        set_heroku_env(config, pool_uri=database_uri)
+        set_heroku_env(config, direct_uri=database_uri)
 
 
 @task
 def create_pool_uri_and_set_env(ctx):
     if is_review_app():
         pool_uri = create_pool(config)
-        set_heroku_env(config, pool_uri)
+        set_heroku_env(config, pool_uri=pool_uri)
         stdout(sanitize_output(pool_uri))
         return sanitize_output(pool_uri)
 
@@ -332,11 +340,11 @@ def create_pool_uri_and_set_env(ctx):
 def setup_review_app_database(ctx):
     if is_review_app():
         results = get_heroku_env()
-        if not results.get("AIVEN_DATABASE_URL") or "pool" in results.get(
-            "AIVEN_DATABASE_URL"
+        if not results.get("AIVEN_DATABASE_DIRECT_URL") or "pool" in results.get(
+            "AIVEN_DATABASE_DIRECT_URL"
         ):
             stderr(
-                f"Failed to get AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL', ''))}"
+                f"Failed to get AIVEN_DATABASE_DIRECT_URL: {sanitize_output(results.get('AIVEN_DATABASE_DIRECT_URL', ''))}"
             )
             exit(6)
         try:
@@ -353,19 +361,18 @@ def setup_review_app_database(ctx):
                     original = run(
                         f"{heroku_bin} config:get DATABASE_URL --app {staging_app_name}"
                     ).stdout.strip()
-                    # if the original heorku db has been detached try to look for AIVEN_DATABASE_URL
+                    # if the original heorku db has been detached try to look for AIVEN_DATABASE_DIRECT_URL in staging
                     aiven = run(
-                        f"{heroku_bin} config:get AIVEN_DATABASE_URL --app {staging_app_name}"
+                        f"{heroku_bin} config:get AIVEN_DATABASE_DIRECT_URL --app {staging_app_name}"
                     ).stdout.strip()
-                    # TODO: the buildpack deploy process re-uses the AIVEN_DATABASE_URL between createdb and createpool, it probably shouldn't
                     aiven_db_url = (original or aiven).format(
                         user=results.get("AIVEN_PG_USER"),
                         password=results.get("AIVEN_PG_PASSWORD"),
-                    ).replace(results.get("AIVEN_STAGING_DB_POOL_NAME", ""), 'defaultdb')
+                    )
 
                     if not original:
                         stdout(
-                            f"running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}"
+                            f"running pg_dump from AIVEN_DATABASE_DIRECT_URL {sanitize_output(aiven_db_url)}"
                         )
                     result = run(
                         f"pg_dump --no-privileges --no-owner {aiven_db_url} | psql {aiven_db_url}"
