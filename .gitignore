@@ -128,3 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .idea/
+testing/AIVEN_AUTH_TOKEN
+testing/HEROKU_API_KEY
+testing/.heroku
+testing/.profile.d

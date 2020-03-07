@@ -61,7 +61,7 @@ def get_heroku_env():
         if result.status_code in (200, 201, 202, 206):
             return result.json()
         else:
-            stderr(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
+            stderr(f"Failed to get heroku env : {result.content}")
             exit(8)
     return {}
 
@@ -338,9 +338,13 @@ def setup_review_app_database(ctx):
                             password=results.get("AIVEN_PG_PASSWORD"),
                         )
                         set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'False'})
-                        run(
-                            f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
-                        )
+                        try:
+                            run(
+                                f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
+                            )
+                        except Exception as e:
+                            stderr(e)
+                            continue
                         set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
                         break
                     except ReferenceError as e:
