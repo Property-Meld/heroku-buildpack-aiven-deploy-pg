@@ -327,8 +327,9 @@ def setup_review_app_database(ctx):
         while True:
             results = get_heroku_env()
             if not results.get("AIVEN_DATABASE_URL") or 'pool' in results.get("AIVEN_DATABASE_URL"):
-                stderr(f"Failed to set AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL'))}")
-                exit(6)
+                stderr(f"Failed to get AIVEN_DATABASE_URL: {sanitize_output(results.get('AIVEN_DATABASE_URL', ''))}")
+                time.sleep(10)
+                continue
             try:
                 if not results.get('REVIEW_APP_HAS_STAGING_DB', '') or results.get('REVIEW_APP_HAS_STAGING_DB', '') == 'False':
                     try:
@@ -342,15 +343,15 @@ def setup_review_app_database(ctx):
                             run(
                                 f"pg_dump --no-privileges --no-owner `{heroku_bin} config:get DATABASE_URL --app {staging_app_name}` | psql {aiven_db_url}"
                             )
+                            set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
+                            break
                         except Exception as e:
-                            stderr(e)
-                            continue
-                        set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': 'True'})
-                        break
+                            stderr(sanitize_output(str(e)))
                     except ReferenceError as e:
                         set_heroku_env(config, add_vars={'REVIEW_APP_HAS_STAGING_DB': ''})
                         break
                 else:
+                    stdout(f"REVIEW_APP_HAS_STAGING_DB: {results.get('REVIEW_APP_HAS_STAGING_DB', '')}")
                     break
             except invoke.Failure:
                 stderr("errors encountered when restoring DB")

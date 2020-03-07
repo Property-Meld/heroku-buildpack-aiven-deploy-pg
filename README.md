@@ -46,6 +46,7 @@ AIVEN_PLAN # (default: startup-4)
 AIVEN_SERVICE_TYPE # (default: "pg" for postgres)
 AIVEN_DBNAME # name of the db (default: "propertymeld")
 HEROKU_APP_NAME # set by heroku, is the heroku app name
+REVIEW_APP_HAS_STAGING_DB # set by buildpack, should indicate if the review app received the database from staging via pg_dump
 ```
 
 Testing this buildpack locally:
