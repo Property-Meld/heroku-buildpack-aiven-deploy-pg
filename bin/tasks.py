@@ -366,7 +366,7 @@ def setup_review_app_database(ctx):
                             f"running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}"
                         )
                     result = run(
-                        f"pg_dump --no-privileges --no-owner {original or aiven} | psql {aiven_db_url}"
+                        f"pg_dump --no-privileges --no-owner {aiven_db_url} | psql {aiven_db_url}"
                     )
                     if result.return_code:
                         stderr(result.stderr)
