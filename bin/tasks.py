@@ -357,6 +357,7 @@ def setup_review_app_database(ctx):
                     aiven = run(
                         f"{heroku_bin} config:get AIVEN_DATABASE_URL --app {staging_app_name}"
                     ).stdout.strip()
+                    # TODO: the buildpack deploy process re-uses the AIVEN_DATABASE_URL between createdb and createpool, it probably shouldn't
                     aiven_db_url = (original or aiven).format(
                         user=results.get("AIVEN_PG_USER"),
                         password=results.get("AIVEN_PG_PASSWORD"),
