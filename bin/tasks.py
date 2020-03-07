@@ -360,7 +360,8 @@ def setup_review_app_database(ctx):
                     aiven_db_url = (original or aiven).format(
                         user=results.get("AIVEN_PG_USER"),
                         password=results.get("AIVEN_PG_PASSWORD"),
-                    )
+                    ).replace(results.get("AIVEN_STAGING_DB_POOL_NAME", ""), 'defaultdb')
+
                     if not original:
                         stdout(
                             f"running pg_dump from AIVEN_DATABASE_URL {sanitize_output(aiven_db_url)}"
