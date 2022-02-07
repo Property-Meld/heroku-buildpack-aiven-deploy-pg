@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-PYTHON_VERSION="python-3.6.7"
-STACK="heroku-16"
+PYTHON_VERSION="python-3.9.10"
+STACK="heroku-20"
 BUILD_DIR=$1
 CACHE_DIR=$2
 ENV_DIR=$3
