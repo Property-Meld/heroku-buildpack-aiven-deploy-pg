@@ -38,9 +38,12 @@ if [ -n "${HEROKU_BIN}" ]; then
   fi
 fi
 
+echo 'heroku-detect: before import'
 ### hmmm, not sure why python 3.8.10 is available here ....
 python -c "import pip"
+echo 'heroku-detect: before invoke'
 python -c "import invoke"
 
+echo 'heroku-detect: end'
 echo "HelloFramework"
 exit 0

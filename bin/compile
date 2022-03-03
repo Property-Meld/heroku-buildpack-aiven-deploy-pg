@@ -2,6 +2,7 @@
 # bin/compile <build-dir> <cache-dir> <env-dir>
 
 # fail fast
+echo 'heroku-compile: start'
 set -ueo pipefail
 
 BUILD_DIR=$1
@@ -27,4 +28,4 @@ for TASK in service-create-aiven-db create-db-task setup-review-app-database cre
     echo running invoke -r $BIN_DIR $TASK
     invoke -r $BIN_DIR $TASK
 done
-
+echo 'heroku-compile: end'
