@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-## bin/detect <build-dir>
+# bin/detect <build-dir>
 #
-echo 'aiven-deploy-detect'
+#echo 'aiven-deploy-detect'
 #
-BUILD_DIR=$1
+#BUILD_DIR=$1
 #
-echo $(ls -la .)
+#echo $(ls -la .)
 #
 ############ app.json requirements
 ##  "buildpacks": [
