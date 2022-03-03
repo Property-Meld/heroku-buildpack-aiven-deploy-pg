@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # bin/detect <build-dir>
+echo why $(which python)
+echo hmm $(python --version)
+echo why not
+printenv
 #
 #echo 'aiven-deploy-detect'
 #
