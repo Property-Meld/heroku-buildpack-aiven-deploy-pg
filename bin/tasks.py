@@ -391,12 +391,15 @@ def setup_review_app_database(ctx):
             )
             exit(6)
         try:
+            stdout("setup_review_app_database checking for staging or review")
             if (
                 not review_app_env.get("REVIEW_APP_HAS_STAGING_DB", "")
                 or review_app_env.get("REVIEW_APP_HAS_STAGING_DB", "") == "False"
             ):
                 try:
+                    stdout("setup_review_app_database before sleep")
                     time.sleep(10)
+                    stdout("setup_review_app_database after sleep")
                     set_heroku_env(
                         config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "False"}
                     )
@@ -405,6 +408,7 @@ def setup_review_app_database(ctx):
                         user=review_app_env.get("AIVEN_PG_USER", "failed_to_get_review_app_user"),
                         password=review_app_env.get("AIVEN_PG_PASSWORD", "failed_to_get_review_app_pass")
                     )
+                    stdout("setup_review_app_database before get_staging_db_url")
                     original, staging_aiven_db_url = get_staging_db_url()
                     if staging_aiven_db_url:
                         stdout(
@@ -413,16 +417,19 @@ def setup_review_app_database(ctx):
                             f"TO review app aiven db: {sanitize_output(review_app_aiven_db_url)}"
                         )
                     else:
+                        stdout("setup_review_app_database review app pg_dump")
                         stdout(
                             f"Running `pg_dump`...\n"
                             f"FROM heroku. Run 'heroku config:get DATABASE_URL --app {staging_app_name}' for more info'"
                             f"'\nTO review app aiven db: {sanitize_output(review_app_aiven_db_url)}"
                         )
 
+                    stdout("setup_review_app_database running pg_dump")
                     result = run(
                         f"pg_dump --no-privileges --no-owner {original or staging_aiven_db_url} | psql {review_app_aiven_db_url}"
                     )
                     if result.return_code:
+                        stdout("setup_review_app_database return code from pg_dump")
                         stderr(result.stderr)
                         exit(7)
                     set_heroku_env(
