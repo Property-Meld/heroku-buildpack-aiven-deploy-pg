@@ -1,46 +1,42 @@
 #!/usr/bin/env bash
 # bin/detect <build-dir>
 
-#echo 'aiven-deploy-detect'
-#
-#BUILD_DIR=$1
-#
-#echo $(ls -la .)
-#
-#echo $(which python)
-#echo $(python --version)
+echo 'aiven-deploy-detect'
 
-############ app.json requirements
-##  "buildpacks": [
-##    {
-##      "url": "https://github.com/heroku/heroku-buildpack-cli"
-##    },
-##    {
-##      "url": "https://github.com/heroku/heroku-buildpack-python"
-##    },
-##   ],
-############
-#
-#if ! [ -x "$(command -v python)" ]; then
-#  echo 'Error: python is not installed.' >&2
-#  exit 1
-#else
-#  echo 'python version:'
-#  echo     "$(python --version)"
-#fi
-#
-#if [ -n "${HEROKU_BIN}" ]; then
-#  if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
-#      source "$BUILD_DIR/.profile.d/heroku-cli.sh"
-#  else
-#      echo "heroku buildpack not installed in app.json buildpacks: https://github.com/heroku/heroku-buildpack-cli" >&2
-#      exit 1
-#  fi
-#fi
+BUILD_DIR=$1
 
-### hmmm, not sure why python 3.8.10 is available here ....
-#python -m "import pip"
-#python -c "import invoke"
+echo $(ls -la .)
 
-echo "HelloFramework"
+########### app.json requirements
+#  "buildpacks": [
+#    {
+#      "url": "https://github.com/heroku/heroku-buildpack-cli"
+#    },
+#    {
+#      "url": "https://github.com/heroku/heroku-buildpack-python"
+#    },
+#   ],
+###########
+
+if ! [ -x "$(command -v python)" ]; then
+  echo 'Error: python is not installed.' >&2
+  exit 1
+else
+  echo 'python version:'
+  echo     "$(python --version)"
+fi
+
+if [ -n "${HEROKU_BIN}" ]; then
+  if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
+      source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+  else
+      echo "heroku buildpack not installed in app.json buildpacks: https://github.com/heroku/heroku-buildpack-cli" >&2
+      exit 1
+  fi
+fi
+
+
+python -c "import pip"
+python -c "import invoke"
+
 exit 0
