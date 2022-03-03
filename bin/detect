@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # bin/detect <build-dir>
+
+echo 'aiven-deploy-detect'
+
+BUILD_DIR=$1
+
+echo $(ls -la .)
+
 echo why $(which python)
 echo hmm $(python --version)
-echo why not
-printenv
-#
-#echo 'aiven-deploy-detect'
-#
-#BUILD_DIR=$1
-#
-#echo $(ls -la .)
-#
+
 ############ app.json requirements
 ##  "buildpacks": [
 ##    {
@@ -22,25 +21,26 @@ printenv
 ##   ],
 ############
 #
-##if ! [ -x "$(command -v python)" ]; then
-##  echo 'Error: python is not installed.' >&2
-##  exit 1
-##else
-##  echo 'python version:'
-##  echo     "$(python --version)"
-##fi
-##
-##if [ -n "${HEROKU_BIN}" ]; then
-##  if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
-##      source "$BUILD_DIR/.profile.d/heroku-cli.sh"
-##  else
-##      echo "heroku buildpack not installed in app.json buildpacks: https://github.com/heroku/heroku-buildpack-cli" >&2
-##      exit 1
-##  fi
-##fi
-##
+if ! [ -x "$(command -v python)" ]; then
+  echo 'Error: python is not installed.' >&2
+  exit 1
+else
+  echo 'python version:'
+  echo     "$(python --version)"
+fi
+
+if [ -n "${HEROKU_BIN}" ]; then
+  if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
+      source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+  else
+      echo "heroku buildpack not installed in app.json buildpacks: https://github.com/heroku/heroku-buildpack-cli" >&2
+      exit 1
+  fi
+fi
+
 ### hmmm, not sure why python 3.8.10 is available here ....
-### python -c "import pip"
-### python -c "import invoke"
-##
-##exit 0
+python -c "import pip"
+python -c "import invoke"
+
+echo "HelloFramework"
+exit 0
