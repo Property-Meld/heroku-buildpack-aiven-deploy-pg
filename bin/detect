@@ -35,8 +35,8 @@ if [ -n "${HEROKU_BIN}" ]; then
   fi
 fi
 
-
-python -c "import pip"
-python -c "import invoke"
+# hmmm, not sure why python 3.8.10 is available here ....
+# python -c "import pip"
+# python -c "import invoke"
 
 exit 0
