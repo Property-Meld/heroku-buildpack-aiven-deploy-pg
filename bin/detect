@@ -26,11 +26,13 @@ else
   echo     "$(python --version)"
 fi
 
-if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
-    source "$BUILD_DIR/.profile.d/heroku-cli.sh"
-else
-    echo "heroku buildpack not installed in app.json buildpacks: https://github.com/heroku/heroku-buildpack-cli" >&2
-    exit 1
+if [ -n "${HEROKU_BIN}" ]; then
+  if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
+      source "$BUILD_DIR/.profile.d/heroku-cli.sh"
+  else
+      echo "heroku buildpack not installed in app.json buildpacks: https://github.com/heroku/heroku-buildpack-cli" >&2
+      exit 1
+  fi
 fi
 
 

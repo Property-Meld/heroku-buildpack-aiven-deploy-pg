@@ -72,6 +72,7 @@ Testing this buildpack locally:
 - Create a review app in heroku
 - ensure AIVEN_DATABASE_URL doesn't exist in review app config vars
 - touch testing/{HEROKU_API_KEY,AIVEN_AUTH_TOKEN,HEROKU_BIN,IS_REVIEW_APP}
+- HEROKU_BIN will be local if testiing locally, so `echo $(which heroku) > testing/HEROKU_BIN`
 - update the other env config vars in testing folder
 - fill in the above created files
 - and then run `cd testing && ../bin/compile . . .`
