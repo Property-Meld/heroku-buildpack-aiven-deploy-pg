@@ -45,5 +45,4 @@ echo 'heroku-detect: before invoke'
 python -c "import invoke"
 
 echo 'heroku-detect: end'
-echo "HelloFramework"
-exit 0
+echo "PMAivenDeploy"

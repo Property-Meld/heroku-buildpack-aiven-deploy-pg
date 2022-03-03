@@ -292,6 +292,7 @@ def service_create_aiven_db(ctx):
     ./manage.py release_phase.py --run-locally
     """
     if is_review_app():
+        stdout("service_create_aiven_db start")
         results = get_heroku_env()
         env_vars = [
             "AIVEN_APP_NAME",
@@ -317,6 +318,8 @@ def service_create_aiven_db(ctx):
             wait_for_service(config)
         else:
             stdout("Pre-existing db service found.")
+
+        stdout("service_create_aiven_db end")
 
 
 def is_review_app():
@@ -358,22 +361,27 @@ def get_staging_db_url() -> (str, str):
 @task
 def create_db_task(ctx):
     if is_review_app():
+        stdout("create_db_task start")
         database_uri = create_db(config)
         set_heroku_env(config, direct_uri=database_uri)
+        stdout("create_db_task end")
 
 
 @task
 def create_pool_uri_and_set_env(ctx):
     if is_review_app():
+        stdout("create_pool_uri_and_set_env start")
         pool_uri = create_pool(config)
         set_heroku_env(config, pool_uri=pool_uri)
         stdout(sanitize_output(pool_uri))
+        stdout("create_pool_uri_and_set_env end")
         return sanitize_output(pool_uri)
 
 
 @task
 def setup_review_app_database(ctx):
     if is_review_app():
+        stdout("setup_review_app_database start")
         review_app_env = get_heroku_env()
         if not review_app_env.get("AIVEN_DATABASE_DIRECT_URL") or "pool" in review_app_env.get(
             "AIVEN_DATABASE_DIRECT_URL"
@@ -429,6 +437,8 @@ def setup_review_app_database(ctx):
         except invoke.Failure:
             stderr("errors encountered when restoring DB")
             exit(8)
+
+        stdout("setup_review_app_database end")
 
 
 @task
