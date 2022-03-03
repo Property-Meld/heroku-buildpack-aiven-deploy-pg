@@ -348,7 +348,9 @@ def get_staging_db_url() -> (str, str):
     )
     if errs:
         stdout("get_staging_db_url exiting 20")
-        stdout("errs: ", errs)
+        stdout("+--------------------------------------------+")
+        stdout(errs)
+        stdout("+--------------------------------------------+")
         exit(20)
 
     stdout("get_staging_db_url getting password / url")
