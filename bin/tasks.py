@@ -326,6 +326,10 @@ def is_review_app():
     return is_ra
 
 
+@task
+def do_get_staging_db_url(ctx):
+    get_staging_db_url()
+
 def get_staging_db_url() -> (str, str):
 
     # orignal heroku staging db
@@ -342,9 +346,7 @@ def get_staging_db_url() -> (str, str):
         f"{heroku_bin} config:get AIVEN_PG_PASSWORD --app {staging_app_name}", no_buffer=True
     )
     if errs:
-        stdout('uhhhhhhhhhhhhhhhhhhhm')
-        stdout(f"errs: {errs} END ERRRRRS")
-        exit(20)
+        stdout(errs)
     staging_aiven_pg_password = out.strip()
     staging_aiven_db_url = ''
     if staging_aiven:
