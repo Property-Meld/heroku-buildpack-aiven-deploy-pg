@@ -346,12 +346,12 @@ def get_staging_db_url() -> (str, str):
     out, errs = do_popen(
         f"{heroku_bin} config:get AIVEN_PG_PASSWORD --app {staging_app_name}", no_buffer=True
     )
-    if errs:
-        stdout("get_staging_db_url exiting 20")
-        stdout("+--------------------------------------------+")
-        stdout(errs)
-        stdout("+--------------------------------------------+")
-        exit(20)
+    # if errs:
+    #     stdout("get_staging_db_url exiting 20")
+    #     stdout("+--------------------------------------------+")
+    #     stdout(errs)
+    #     stdout("+--------------------------------------------+")
+    #     exit(20)
 
     stdout("get_staging_db_url getting password / url")
     staging_aiven_pg_password = out.strip()
