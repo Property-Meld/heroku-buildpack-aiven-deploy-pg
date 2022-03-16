@@ -498,8 +498,8 @@ def get_and_clear_empty_db(ctx):
     direct_url, pool_url = _get_and_clear_empty_db()
     stdout(direct_url, pool_url)
 
-@task
-def create_empty_db(ctx):
+
+def _create_empty_db():
     shared_app_name = config.get("shared_resource_app")
     shared_result = get_heroku_env(shared_app_name)
     direct_url, pool_url = (shared_result.get('AIVEN_EMPTY_DB', '\n') or '\n').split('\n')
@@ -530,3 +530,8 @@ def create_empty_db(ctx):
         pool_uri = create_pool(db_config)
         aiven_empty_db = f'{database_uri}\n{pool_uri}'
         set_heroku_env({}, add_vars={"AIVEN_EMPTY_DB": aiven_empty_db}, app_name=shared_app_name)
+
+
+@task
+def create_empty_db(ctx):
+    _create_empty_db()
