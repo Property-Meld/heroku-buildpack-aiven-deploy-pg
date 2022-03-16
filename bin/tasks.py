@@ -292,7 +292,7 @@ def set_heroku_env(
         )
         if result.status_code in (200, 201, 202, 206):
             stdout(f"Configured Heroku application config vars for HEROKU_APP_NAME: {config.get('app_name')}")
-            stdout(f"AIVEN env vars set: {to_json.keys()}")
+            stdout(f"AIVEN env vars set: {to_json.keys()} on {app_name or os.environ.get('HEROKU_APP_NAME')}")
         else:
             stderr(f"Failed to set AIVEN_APP_NAME, DATABASE_URL : {result.content}")
             exit(8)
@@ -394,6 +394,9 @@ def get_staging_db_url() -> (str, str):
 @task
 def create_db_task(ctx):
     if is_review_app():
+        direct_uri, pool_uri = check_if_exist()
+        if pool_uri:
+            return pool_uri
         database_uri = create_db(config)
         set_heroku_env(config, direct_uri=database_uri)
 
@@ -490,7 +493,7 @@ def aiven_teardown_db(ctx):
 def _get_and_clear_empty_db():
     shared_app_name = config.get("shared_resource_app")
     shared_result = get_heroku_env(config.get("shared_resource_app"))
-    direct_uri, pool_uri = shared_result.get('AIVEN_EMPTY_DB', '\n').split('\n')
+    direct_uri, pool_uri = (shared_result.get('AIVEN_EMPTY_DB', '\n') or '\n').split('\n')
     stdout(sanitize_output(f'DIRECT_URI POOL_URI: {direct_uri} {pool_uri}'))
     if direct_uri != '' and pool_uri != '':
         stdout('FOUND AIVEN_EMPTY_DB')
