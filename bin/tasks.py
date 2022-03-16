@@ -95,6 +95,7 @@ def check_if_exist():
     if all([x in results for x in env_vars]):
         stdout("Pre-existing db service found.")
         return results.get("AIVEN_DATABASE_DIRECT_URL"), results.get("AIVEN_DATABASE_URL", "")
+    return None, None
 
 
 def sanitize_output(output):
