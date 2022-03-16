@@ -490,12 +490,17 @@ def aiven_teardown_db(ctx):
 def _get_and_clear_empty_db():
     shared_app_name = config.get("shared_resource_app")
     shared_result = get_heroku_env(config.get("shared_resource_app"))
-    direct_url, pool_url = shared_result.get('AIVEN_EMPTY_DB', '\n').split('\n')
-    if direct_url and pool_url:
+    direct_uri, pool_uri = shared_result.get('AIVEN_EMPTY_DB', '\n').split('\n')
+    stdout(sanitize_output(f'DIRECT_URI POOL_URI: {direct_uri} {pool_uri}'))
+    if direct_uri != '' and pool_uri != '':
         stdout('FOUND AIVEN_EMPTY_DB')
         set_heroku_env({**config, "app_name": shared_app_name}, add_vars={"AIVEN_EMPTY_DB": ""}, app_name=shared_app_name)
-    stdout('RETURNING THE UNMIGRATED DB')
-    return direct_url, pool_url
+        stdout('RETURNING THE UNMIGRATED DB')
+        return direct_uri, pool_uri
+    else:
+        stdout(sanitize_output(f'DIRECT_URI POOL_URI: {direct_uri} {pool_uri}'))
+        return None, None
+
 
 @task
 def get_and_clear_empty_db(ctx):
