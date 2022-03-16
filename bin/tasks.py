@@ -241,7 +241,10 @@ def clear_pre_existing_pool(config):
     time.sleep(10)
 
 
-def set_heroku_env(config, pool_uri=None, direct_uri=None, add_vars: dict = {}, app_name=None):
+def set_heroku_env(
+    config, pool_uri=None, direct_uri=None, add_vars=None, app_name=None
+):
+    add_vars = add_vars or {}
     assert pool_uri or add_vars or direct_uri
     if app_name or os.environ.get("HEROKU_APP_NAME"):
         if pool_uri or direct_uri:
