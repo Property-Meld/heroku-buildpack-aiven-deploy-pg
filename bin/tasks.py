@@ -1,6 +1,8 @@
 import sys
 from io import StringIO
 from typing import AnyStr, Union
+from uuid import uuid4
+
 import invoke.exceptions
 from invoke import task, run
 import os
@@ -39,6 +41,7 @@ config = {
     "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku staging env vars in dashboard "reveal config vars", and aiven console
     "app_name": f"{os.environ.get('HEROKU_APP_NAME')}",
     "project": os.environ.get("AIVEN_PROJECT_NAME"),
+    "shared_resource_app": os.environ.get("AIVEN_SHARED_RESOURCE_APP"),
 }
 
 service_config = {
@@ -53,10 +56,11 @@ service_config = {
 stdout(f"service_config: {service_config}")
 
 
-def get_heroku_env():
+def get_heroku_env(env=None):
     if os.environ.get("HEROKU_APP_NAME"):
+        url = f"https://api.heroku.com/apps/{env or os.environ.get('HEROKU_APP_NAME')}/config-vars"
         result = requests.get(
-            f"https://api.heroku.com/apps/{os.environ.get('HEROKU_APP_NAME')}/config-vars",
+            url,
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/vnd.heroku+json; version=3",
@@ -77,6 +81,20 @@ stdout(f"HEROKU_BIN: {heroku_bin}")
 if not heroku_bin:
     stderr("heroku_bin not set")
     exit(1)
+
+
+def check_if_exist():
+    results = get_heroku_env()
+    env_vars = [
+        "AIVEN_APP_NAME",
+        "AIVEN_DATABASE_DIRECT_URL",
+        "AIVEN_PG_USER",
+        "AIVEN_DIRECT_PG_PORT",
+        "AIVEN_PG_PASSWORD",
+    ]
+    if all([x in results for x in env_vars]):
+        stdout("Pre-existing db service found.")
+        return results.get("AIVEN_DATABASE_DIRECT_URL"), results.get("AIVEN_DATABASE_URL", "")
 
 
 def sanitize_output(output):
@@ -168,6 +186,9 @@ def wait_for_service(config):
 
 
 def create_db(config) -> str:
+    direct_uri, pool_uri = check_if_exist()
+    if direct_uri:
+        return direct_uri
     db = None
     while not db:
         stdout("Trying to create db.")
@@ -195,6 +216,10 @@ def create_db(config) -> str:
 
 
 def create_pool(config) -> str:
+    direct_uri, pool_uri = check_if_exist()
+    if pool_uri:
+        return pool_uri
+
     result = do_popen(
         pool_list_cmd(**config), err_msg="Failed to list pool.", _json=True
     )
@@ -216,9 +241,9 @@ def clear_pre_existing_pool(config):
     time.sleep(10)
 
 
-def set_heroku_env(config, pool_uri=None, direct_uri=None, add_vars: dict = {}):
+def set_heroku_env(config, pool_uri=None, direct_uri=None, add_vars: dict = {}, app_name=None):
     assert pool_uri or add_vars or direct_uri
-    if os.environ.get("HEROKU_APP_NAME"):
+    if app_name or os.environ.get("HEROKU_APP_NAME"):
         if pool_uri or direct_uri:
             parsed_uri = urlparse(pool_uri or direct_uri)
             db_env_uri = urlunparse(
@@ -253,7 +278,7 @@ def set_heroku_env(config, pool_uri=None, direct_uri=None, add_vars: dict = {}):
             to_json = add_vars
             data = json.dumps(add_vars)
         result = requests.patch(
-            f"https://api.heroku.com/apps/{os.environ.get('HEROKU_APP_NAME')}/config-vars",
+            f"https://api.heroku.com/apps/{app_name or os.environ.get('HEROKU_APP_NAME')}/config-vars",
             data=data,
             headers={
                 "Content-Type": "application/json",
@@ -281,6 +306,22 @@ def remove_postgres_addon():
         stdout(f"quiet error: {str(e)}")
 
 
+def create_aiven_db(create_config, review_app_config):
+    result = do_popen(
+        list_cmd(**review_app_config),
+        err_msg=f"Failed to list services for: {review_app_config.get('project')} {str(review_app_config.get('app_name'))}.",
+        _json=True,
+    )
+    if not len(result):
+        stdout("Attempting to start new db service instance.")
+        do_popen(
+            service_create_cmd(**create_config),
+            err_msg=f"Unable to create service: {review_app_config.get('app_name')}",
+        )
+    else:
+        stdout("Pre-existing db service found.")
+
+
 @task
 def service_create_aiven_db(ctx):
     """
@@ -292,31 +333,18 @@ def service_create_aiven_db(ctx):
     ./manage.py release_phase.py --run-locally
     """
     if is_review_app():
-        results = get_heroku_env()
-        env_vars = [
-            "AIVEN_APP_NAME",
-            "AIVEN_DATABASE_DIRECT_URL",
-            "AIVEN_PG_USER",
-            "AIVEN_DIRECT_PG_PORT",
-            "AIVEN_PG_PASSWORD",
-        ]
-        if all([x in results for x in env_vars]):
-            stdout("Pre-existing db service found.")
-            return results.get("AIVEN_DATABASE_DIRECT_URL")
-        result = do_popen(
-            list_cmd(**config),
-            err_msg=f"Failed to list services for: {config.get('project')} {str(config.get('app_name'))}.",
-            _json=True,
-        )
-        if not len(result):
-            stdout("Attempting to start new db service instance.")
-            do_popen(
-                service_create_cmd(**{**config, **service_config}),
-                err_msg=f"Unable to create service: {config.get('app_name')}",
-            )
-            wait_for_service(config)
+        direct_uri, pool_uri = check_if_exist()
+        if direct_uri:
+            return direct_uri
+        direct_uri, pool_uri = _get_and_clear_empty_db()
+        if direct_uri and pool_uri:
+            set_heroku_env(config, pool_uri=pool_uri)
+            set_heroku_env(config, direct_uri=direct_uri)
         else:
-            stdout("Pre-existing db service found.")
+            review_app_config = {**config, **service_config}
+            create_aiven_db(review_app_config, config)
+            wait_for_service(review_app_config)
+
 
 
 def is_review_app():
@@ -369,16 +397,48 @@ def create_db_task(ctx):
 @task
 def create_pool_uri_and_set_env(ctx):
     if is_review_app():
+        direct_uri, pool_uri = check_if_exist()
+        if pool_uri:
+            return pool_uri
+
         pool_uri = create_pool(config)
         set_heroku_env(config, pool_uri=pool_uri)
         stdout(sanitize_output(pool_uri))
         return sanitize_output(pool_uri)
 
 
+def dump_staging_to_db(review_app_env):
+    # review app database
+    review_app_aiven_db_url = review_app_env.get("AIVEN_DATABASE_DIRECT_URL").format(
+        user=review_app_env.get("AIVEN_PG_USER", "failed_to_get_review_app_user"),
+        password=review_app_env.get("AIVEN_PG_PASSWORD", "failed_to_get_review_app_pass")
+    )
+    original, staging_aiven_db_url = get_staging_db_url()
+    if staging_aiven_db_url:
+        stdout(
+            f"Running 'pg_dump'...\n"
+            f"FROM staging AIVEN_DATABASE_DIRECT_URL {sanitize_output(staging_aiven_db_url)}\n"
+            f"TO review app aiven db: {sanitize_output(review_app_aiven_db_url)}"
+        )
+    else:
+        stdout(
+            f"Running `pg_dump`...\n"
+            f"FROM heroku. Run 'heroku config:get DATABASE_URL --app {staging_app_name}' for more info'"
+            f"'\nTO review app aiven db: {sanitize_output(original or staging_aiven_db_url)}"
+        )
+    result = run(
+        f"pg_dump --no-privileges --no-owner {original or staging_aiven_db_url} | psql {review_app_aiven_db_url}"
+    )
+    return result
+
+
 @task
 def setup_review_app_database(ctx):
     if is_review_app():
         review_app_env = get_heroku_env()
+        direct_uri, pool_uri = check_if_exist()
+        if direct_uri:
+            return direct_uri
         if not review_app_env.get("AIVEN_DATABASE_DIRECT_URL") or "pool" in review_app_env.get(
             "AIVEN_DATABASE_DIRECT_URL"
         ):
@@ -396,28 +456,7 @@ def setup_review_app_database(ctx):
                     set_heroku_env(
                         config, add_vars={"REVIEW_APP_HAS_STAGING_DB": "False"}
                     )
-                    # review app database
-                    review_app_aiven_db_url = review_app_env.get("AIVEN_DATABASE_DIRECT_URL").format(
-                        user=review_app_env.get("AIVEN_PG_USER", "failed_to_get_review_app_user"),
-                        password=review_app_env.get("AIVEN_PG_PASSWORD", "failed_to_get_review_app_pass")
-                    )
-                    original, staging_aiven_db_url = get_staging_db_url()
-                    if staging_aiven_db_url:
-                        stdout(
-                            f"Running 'pg_dump'...\n"
-                            f"FROM staging AIVEN_DATABASE_DIRECT_URL {sanitize_output(staging_aiven_db_url)}\n"
-                            f"TO review app aiven db: {sanitize_output(review_app_aiven_db_url)}"
-                        )
-                    else:
-                        stdout(
-                            f"Running `pg_dump`...\n"
-                            f"FROM heroku. Run 'heroku config:get DATABASE_URL --app {staging_app_name}' for more info'"
-                            f"'\nTO review app aiven db: {sanitize_output(review_app_aiven_db_url)}"
-                        )
-
-                    result = run(
-                        f"pg_dump --no-privileges --no-owner {original or staging_aiven_db_url} | psql {review_app_aiven_db_url}"
-                    )
+                    result = dump_staging_to_db(review_app_env)
                     if result.return_code:
                         stderr(result.stderr)
                         exit(7)
@@ -437,8 +476,57 @@ def setup_review_app_database(ctx):
 
 @task
 def aiven_teardown_db(ctx):
-    stdout(f"Aiven: Attempting to teardown service. {app_name}")
+    stdout(f"Aiven: Attempting to teardown service. {config.get('app_name')}")
     do_popen(pool_delete_cmd(**config), err_msg="Failed to delete pool.")
     stdout(f'Service: {config.get("app_name")} postgres pool deleted')
-    do_popen(service_terminate_cmd(**config), f"Unable to teardown service: {app_name}")
+    do_popen(service_terminate_cmd(**config), f"Unable to teardown service: {config.get('app_name')}")
     stdout(f'Service: {config.get("project")} deleted.')
+
+
+def _get_and_clear_empty_db():
+    shared_app_name = config.get("shared_resource_app")
+    shared_result = get_heroku_env(config.get("shared_resource_app"))
+    direct_url, pool_url = shared_result.get('AIVEN_EMPTY_DB', '\n').split('\n')
+    if direct_url and pool_url:
+        stdout('FOUND AIVEN_EMPTY_DB')
+        set_heroku_env({**config, "app_name": shared_app_name}, add_vars={"AIVEN_EMPTY_DB": ""}, app_name=shared_app_name)
+    stdout('RETURNING THE UNMIGRATED DB')
+    return direct_url, pool_url
+
+@task
+def get_and_clear_empty_db(ctx):
+    direct_url, pool_url = _get_and_clear_empty_db()
+    stdout(direct_url, pool_url)
+
+@task
+def create_empty_db(ctx):
+    shared_app_name = config.get("shared_resource_app")
+    shared_result = get_heroku_env(shared_app_name)
+    direct_url, pool_url = (shared_result.get('AIVEN_EMPTY_DB', '\n') or '\n').split('\n')
+    if direct_url and pool_url:
+        stdout(
+            f"AIVEN_EMPTY_DB exists. Skipping"
+        )
+    else:
+        db_config = {
+            **config,
+            "app_name": f'pm-{str(uuid4()).lower()}',
+        }
+        next_config = {
+            **db_config,
+            **service_config,
+        }
+        create_aiven_db(next_config, db_config)
+        wait_for_service(next_config)
+        database_uri = create_db(db_config)
+        # review_app_env.get("AIVEN_DATABASE_DIRECT_URL")
+        review_app_env = {
+            "AIVEN_DATABASE_DIRECT_URL": database_uri
+        }
+        result = dump_staging_to_db(review_app_env)
+        if result.return_code:
+            stderr(result.stderr)
+            exit(7)
+        pool_uri = create_pool(db_config)
+        aiven_empty_db = f'{database_uri}\n{pool_uri}'
+        set_heroku_env({}, add_vars={"AIVEN_EMPTY_DB": aiven_empty_db}, app_name=shared_app_name)
