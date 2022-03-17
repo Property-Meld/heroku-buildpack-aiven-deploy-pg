@@ -34,18 +34,16 @@ pool_list_cmd = """avn --auth-token {auth_token} service connection-pool-list {a
 pool_delete_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-delete {{app_name}} --project {{project}} --pool-name {db_name}-pool --json""".format
 
 stdout(f'os.environ.get("AIVEN_PROJECT_NAME"): {os.environ.get("AIVEN_PROJECT_NAME")}')
-stdout(f'os.environ.get("AIVEN_SHARED_RESOURCE_APP"): {os.environ.get("AIVEN_SHARED_RESOURCE_APP")}')
 stdout(f'os.environ.get("HEROKU_APP_NAME"): {os.environ.get("HEROKU_APP_NAME")}')
 assert os.environ.get("AIVEN_PROJECT_NAME")
 assert os.environ.get("AIVEN_AUTH_TOKEN")
-assert os.environ.get("AIVEN_SHARED_RESOURCE_APP"), "did you set the AIVEN_SHARED_RESOURCE_APP in your review app pipeline?"
 assert os.environ.get("HEROKU_APP_NAME")
 
 config = {
-    "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku staging env vars in dashboard "reveal config vars", and aiven console
+    "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku review app pipeline env vars in dashboard "reveal config vars", and aiven console
     "app_name": f"{os.environ.get('HEROKU_APP_NAME')}",
     "project": os.environ.get("AIVEN_PROJECT_NAME"),
-    "shared_resource_app": os.environ.get("AIVEN_SHARED_RESOURCE_APP", "shared-amqp"),
+    "shared_resource_app": os.environ.get("AIVEN_SHARED_RESOURCE_APP", "shared-amqp") or "shared-amqp",
 }
 
 service_config = {
