@@ -35,22 +35,21 @@ pool_delete_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-de
 
 assert os.environ.get("AIVEN_PROJECT_NAME")
 assert os.environ.get("AIVEN_AUTH_TOKEN")
+assert os.environ.get("AIVEN_SHARED_RESOURCE_APP"), "did you set the AIVEN_SHARED_RESOURCE_APP in your review app pipeline?"
 assert os.environ.get("HEROKU_APP_NAME")
 
 config = {
     "auth_token": f'"{os.environ.get("AIVEN_AUTH_TOKEN")}"',  # set in heroku staging env vars in dashboard "reveal config vars", and aiven console
     "app_name": f"{os.environ.get('HEROKU_APP_NAME')}",
     "project": os.environ.get("AIVEN_PROJECT_NAME"),
-    "shared_resource_app": os.environ.get("AIVEN_SHARED_RESOURCE_APP"),
+    "shared_resource_app": os.environ.get("AIVEN_SHARED_RESOURCE_APP", "shared-amqp"),
 }
 
 service_config = {
     "cloud": os.environ.get("AIVEN_CLOUD", "do-nyc") or "do-nyc",
     "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg") or "pg",
-    "plan": os.environ.get("AIVEN_PLAN", "startup-4")
-    or "startup-4",  # hobbyist does not support pooling
-    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12")
-    or "pg_version=12",
+    "plan": os.environ.get("AIVEN_PLAN", "startup-4") or "startup-4",  # hobbyist does not support pooling
+    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12") or "pg_version=12",
 }
 
 stdout(f"service_config: {service_config}")
