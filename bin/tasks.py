@@ -33,6 +33,9 @@ pool_create_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-cr
 pool_list_cmd = """avn --auth-token {auth_token} service connection-pool-list {app_name} --verbose --project {project} --json""".format
 pool_delete_cmd = f"""avn --auth-token {{auth_token}} service connection-pool-delete {{app_name}} --project {{project}} --pool-name {db_name}-pool --json""".format
 
+stdout(f'os.environ.get("AIVEN_PROJECT_NAME"): {os.environ.get("AIVEN_PROJECT_NAME")}')
+stdout(f'os.environ.get("AIVEN_SHARED_RESOURCE_APP"): {os.environ.get("AIVEN_SHARED_RESOURCE_APP")}')
+stdout(f'os.environ.get("HEROKU_APP_NAME"): {os.environ.get("HEROKU_APP_NAME")}')
 assert os.environ.get("AIVEN_PROJECT_NAME")
 assert os.environ.get("AIVEN_AUTH_TOKEN")
 assert os.environ.get("AIVEN_SHARED_RESOURCE_APP"), "did you set the AIVEN_SHARED_RESOURCE_APP in your review app pipeline?"
