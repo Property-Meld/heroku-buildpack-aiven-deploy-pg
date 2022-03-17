@@ -58,7 +58,9 @@ stdout(f"service_config: {service_config}")
 
 def get_heroku_env(env=None):
     if os.environ.get("HEROKU_APP_NAME"):
-        url = f"https://api.heroku.com/apps/{env or os.environ.get('HEROKU_APP_NAME')}/config-vars"
+        app = env or os.environ.get('HEROKU_APP_NAME')
+        url = f"https://api.heroku.com/apps/{app}/config-vars"
+        stdout(f'REQUESTING HEROKU ENV VARS ON APP: {app}')
         result = requests.get(
             url,
             headers={
@@ -492,9 +494,11 @@ def aiven_teardown_db(ctx):
 
 def _get_and_clear_empty_db():
     shared_app_name = config.get("shared_resource_app")
-    shared_result = get_heroku_env(config.get("shared_resource_app"))
+    stdout(f'LOOKING FOR AN EMPTY DB IN SHARED APP: {shared_app_name}')
+    shared_result = get_heroku_env(shared_app_name)
     direct_uri, pool_uri = (shared_result.get('AIVEN_EMPTY_DB', '\n') or '\n').split('\n')
-    stdout(sanitize_output(f'DIRECT_URI POOL_URI: {direct_uri} {pool_uri}'))
+    stdout(sanitize_output(f'DIRECT_URI: {direct_uri or "Found Nothing"}'))
+    stdout(sanitize_output(f'POOL_URI: {pool_uri or "Found Nothing"}'))
     if direct_uri != '' and pool_uri != '':
         stdout('FOUND AIVEN_EMPTY_DB')
         set_heroku_env({**config, "app_name": shared_app_name}, add_vars={"AIVEN_EMPTY_DB": ""}, app_name=shared_app_name)
