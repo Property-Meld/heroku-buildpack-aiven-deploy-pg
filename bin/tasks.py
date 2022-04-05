@@ -18,6 +18,20 @@ from errno import ETIME
 from os import strerror
 from signal import signal, SIGALRM, alarm
 
+stdout = lambda x: sys.stdout.write(x + "\n")
+stderr = lambda x: sys.stderr.write(x + "\n")
+
+
+try:
+    from propertymeld.constants import PROTECTED_AIVEN_APP_NAMES
+except ImportError:
+    PROTECTED_AIVEN_APP_NAMES = [
+        x for x in os.environ.get("PROTECTED_AIVEN_APP_NAMES", "").split(",") if x
+    ]
+if not len(PROTECTED_AIVEN_APP_NAMES):
+    stderr("Are you sure there isn't a protected app name?")
+    exit(1)
+
 
 def pid_exists(pid):
     if pid < 0:
@@ -49,10 +63,6 @@ class timeout(ContextDecorator):
         alarm(0)
         if self.suppress and exc_type is TimeoutError:
             return True
-
-
-stdout = lambda x: sys.stdout.write(x + "\n")
-stderr = lambda x: sys.stderr.write(x + "\n")
 
 
 db_name = os.environ.get("AIVEN_DBNAME", "propertymeld")
@@ -115,7 +125,9 @@ def get_heroku_env(env=None):
     return {}
 
 
-heroku_bin = os.environ.get("HEROKU_BIN", get_heroku_env().get("HEROKU_BIN", ""))
+heroku_bin = os.environ.get(
+    "HEROKU_BIN", get_heroku_env().get("HEROKU_BIN", "/app/.heroku/bin/heroku")
+)
 stdout(f"HEROKU_BIN: {heroku_bin}")
 
 assert heroku_bin
@@ -375,10 +387,6 @@ def create_aiven_db(create_config, review_app_config):
             service_create_cmd(**create_config),
             err_msg=f"Unable to create service: {review_app_config.get('app_name')}",
         )
-        do_popen(
-            add_tag_cmd(**{**create_config, "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}"}),
-            err_msg=f"Unable to create service: {review_app_config.get('app_name')}",
-        )
     else:
         stdout("Pre-existing db service found.")
 
@@ -401,10 +409,34 @@ def service_create_aiven_db(ctx):
         if direct_uri and pool_uri:
             set_heroku_env(config, pool_uri=pool_uri)
             set_heroku_env(config, direct_uri=direct_uri)
+            try:
+                do_popen(
+                    add_tag_cmd(
+                        **{
+                            **config,
+                            "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}",
+                        }
+                    ),
+                    err_msg=f"Unable to create service: {config.get('app_name')}",
+                )
+            except Exception as e:
+                stdout(str(e))
         else:
             review_app_config = {**config, **service_config}
             create_aiven_db(review_app_config, config)
             wait_for_service(review_app_config)
+            try:
+                do_popen(
+                    add_tag_cmd(
+                        **{
+                            **review_app_config,
+                            "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}",
+                        }
+                    ),
+                    err_msg=f"Unable to create service: {review_app_config.get('app_name')}",
+                )
+            except Exception as e:
+                stdout(str(e))
 
 
 def is_review_app():
@@ -482,14 +514,24 @@ def create_pool_uri_and_set_env(ctx):
         pool_uri = create_pool(config)
         set_heroku_env(config, pool_uri=pool_uri)
         stdout(sanitize_output(pool_uri))
-        do_popen(
-            add_tag_cmd(**{**config, "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}"}),
-            err_msg=f"Unable to create service: {config.get('app_name')}",
-        )
-
+        try:
+            do_popen(
+                add_tag_cmd(
+                    **{
+                        **config,
+                        "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}",
+                    }
+                ),
+                err_msg=f"Unable to create service: {config.get('app_name')}",
+            )
+        except Exception as e:
+            stdout(str(e))
         return sanitize_output(pool_uri)
 
-def dump_staging_to_db(review_app_env):
+
+def dump_staging_to_db(review_app_env=None):
+    if not review_app_env:
+        review_app_env = get_heroku_env()
     # review app database
     review_app_aiven_db_url = review_app_env.get("AIVEN_DATABASE_DIRECT_URL").format(
         user=review_app_env.get("AIVEN_PG_USER", "failed_to_get_review_app_user"),
@@ -510,20 +552,25 @@ def dump_staging_to_db(review_app_env):
             f"FROM heroku. Run 'heroku config:get DATABASE_URL --app {staging_app_name}' for more info'"
             f"'\nTO review app aiven db: {sanitize_output(original or staging_aiven_db_url)}"
         )
-    dump_pid = Popen(
-        f"sh -c 'pg_dump --no-privileges --no-owner {original or staging_aiven_db_url} | psql {review_app_aiven_db_url}'",
-        stdin=None,
-        stdout=None,
-        stderr=None,
-        close_fds=True,
-        shell=True,
-    ).pid
-    with timeout(3600):
-        while pid_exists(dump_pid):
-            time.sleep(20)
-            stdout(
-                f"{datetime.now().isoformat()} pg_dump pid: '{dump_pid}' still exists"
-            )
+    ok = check_output(
+        ("psql --csv " + review_app_aiven_db_url + " -c").split(" ")
+        + ["select pg_database_size('defaultdb');"]
+    )
+    if int(ok.split(b"\n")[1]) / 1_000_000 < 60:
+        with Popen(
+            f"sh -c 'pg_dump --no-privileges --no-owner {original or staging_aiven_db_url} | psql {review_app_aiven_db_url}'",
+            stdin=None,
+            stdout=None,
+            stderr=None,
+            close_fds=True,
+            shell=True,
+        ) as p:
+            with timeout(1800):
+                while p.poll() is None:
+                    stdout(
+                        f"{datetime.now().isoformat()} pg_dump pid: '{p.pid}' still exists"
+                    )
+                    time.sleep(20)
 
 
 @task
@@ -597,12 +644,18 @@ def _get_and_clear_empty_db():
             add_vars={"AIVEN_EMPTY_DB": ""},
             app_name=shared_app_name,
         )
-
-        do_popen(
-            replace_tag_cmd(**{**config, "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}"}),
-            err_msg=f"Unable to replace HEROKU_APP_NAME tag: {config.get('app_name')}",
-        )
-
+        try:
+            do_popen(
+                replace_tag_cmd(
+                    **{
+                        **config,
+                        "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}",
+                    }
+                ),
+                err_msg=f"Unable to replace HEROKU_APP_NAME tag: {config.get('app_name')}",
+            )
+        except Exception as e:
+            stdout(str(e))
         stdout("RETURNING THE UNMIGRATED DB")
         return direct_uri, pool_uri
     else:
@@ -636,8 +689,58 @@ def _create_empty_db():
             **db_config,
             **service_config,
         }
-        create_aiven_db(next_config, db_config)
-        wait_for_service(next_config)
+
+        # do not create if not aiven_empty_db
+        # and one of the dbs is not in the app urls
+        propertymeld_apps = json.loads(
+            do_popen(
+                "heroku pipelines:info propertymeld --json", "Unable to list services"
+            )
+        )["apps"]
+        current_apps = set()
+        for app in propertymeld_apps:
+            app_name = app.get("name")
+            if app_name not in PROTECTED_AIVEN_APP_NAMES:
+                current_apps.add(app_name)
+        current_database_uris = set()
+        for service in current_apps:
+            cmd = ["heroku", "config:get", "AIVEN_DATABASE_URL", "--app", service]
+            uri = do_popen(" ".join(cmd), "Unable to list services")
+            current_database_uris.add(uri)
+        result = do_popen(
+            list_cmd(**{**config, "app_name": ""}),
+            err_msg=f"Failed to list services for: {config.get('project')} {str(config.get('app_name'))}.",
+            _json=True,
+        )
+        existing_dbs = set([x.get("service_name") for x in result])
+        stdout(f"existing_dbs: {existing_dbs}")
+        assigned_dbs = set(
+            [
+                x.split("@")[1].split("-propertymeld-review-app")[0]
+                for x in current_database_uris
+                if x.strip()
+            ]
+        )
+        stdout(f"assigned_dbs: {assigned_dbs}")
+        stdout(f"diffed dbs: {existing_dbs.difference(assigned_dbs)}")
+        if not len(existing_dbs.difference(assigned_dbs)):
+            create_aiven_db(next_config, db_config)
+            wait_for_service(next_config)
+        else:
+            existing_unassigned_db = existing_dbs.difference(assigned_dbs).pop()
+            db_config["app_name"] = existing_unassigned_db
+        try:
+            do_popen(
+                add_tag_cmd(
+                    **{
+                        **next_config,
+                        "key_value": f"HEROKU_APP_NAME={os.environ.get('HEROKU_APP_NAME', 'not_found')}",
+                    }
+                ),
+                err_msg=f"Unable to create service: {next_config.get('app_name')}",
+            )
+        except Exception as e:
+            stdout(str(e))
         database_uri = create_db(db_config)
         # review_app_env.get("AIVEN_DATABASE_DIRECT_URL")
         review_app_env = {"AIVEN_DATABASE_DIRECT_URL": database_uri}
