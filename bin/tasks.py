@@ -549,11 +549,15 @@ def dump_staging_to_db(review_app_env=None):
             f"FROM heroku. Run 'heroku config:get DATABASE_URL --app {staging_app_name}' for more info'"
             f"'\nTO review app aiven db: {sanitize_output(original or staging_aiven_db_url)}"
         )
-    ok = check_output(
-        ("psql --csv " + review_app_aiven_db_url + " -c").split(" ")
-        + ["select pg_database_size('defaultdb');"]
-    )
-    if int(ok.split(b"\n")[1]) / 1_000_000 < 60:
+    shared_app_name = config.get("shared_resource_app")
+    shared_result = get_heroku_env(shared_app_name)
+    lock = shared_result.get("AIVEN_PG_DUMP_LOCK", "")
+    if not lock:
+        set_heroku_env(
+            {**config, "app_name": shared_app_name},
+            add_vars={"AIVEN_PG_DUMP_LOCK": "1"},
+            app_name=shared_app_name,
+        )
         with Popen(
             f"sh -c 'pg_dump --no-privileges --no-owner {original or staging_aiven_db_url} | psql {review_app_aiven_db_url}'",
             stdin=None,
@@ -568,6 +572,11 @@ def dump_staging_to_db(review_app_env=None):
                         f"{datetime.now().isoformat()} pg_dump pid: '{p.pid}' still exists"
                     )
                     time.sleep(20)
+        set_heroku_env(
+            {**config, "app_name": shared_app_name},
+            add_vars={"AIVEN_PG_DUMP_LOCK": ""},
+            app_name=shared_app_name,
+        )
 
 
 @task
