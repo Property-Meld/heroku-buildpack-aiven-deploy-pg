@@ -28,9 +28,6 @@ except ImportError:
     PROTECTED_AIVEN_APP_NAMES = [
         x for x in os.environ.get("PROTECTED_AIVEN_APP_NAMES", "").split(",") if x
     ]
-if not len(PROTECTED_AIVEN_APP_NAMES):
-    stderr("Are you sure there isn't a protected app name?")
-    exit(1)
 
 
 def pid_exists(pid):
