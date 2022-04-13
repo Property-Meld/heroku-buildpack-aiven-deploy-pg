@@ -23,7 +23,7 @@ staging_app_name = os.environ.get("STAGING_APP_NAME", "property-meld-staging")
 wait_cmd = """avn --auth-token {auth_token} service wait --project {project} {app_name}""".format
 list_cmd = """avn --auth-token {auth_token} service list --project {project} {app_name} --json""".format
 list_db_cmd = """avn --auth-token {auth_token} service database-list --project {project} {app_name} --json""".format
-service_create_cmd = """avn --auth-token {auth_token} service create --project {project} --service-type {service_type} --plan {plan} --cloud {cloud} -c {pg_version} {app_name}""".format
+service_create_cmd = """avn --auth-token {auth_token} service create --project {project} --service-type {service_type} --plan {plan} --cloud {cloud} -c pg_version={pg_version} {app_name}""".format
 service_terminate_cmd = """avn --auth-token {auth_token} service terminate --force --project {project} {app_name}""".format
 delete_db_cmd = f"""avn --auth-token {{auth_token}} service database-delete --project {{project}} --dbname {db_name} {{app_name}}""".format
 create_db_cmd = f"""avn --auth-token {{auth_token}} service database-create --project {{project}} --dbname {db_name} {{app_name}}""".format
