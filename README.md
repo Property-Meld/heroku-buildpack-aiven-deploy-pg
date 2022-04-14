@@ -43,7 +43,7 @@ Other optional environment config vars:
 
 ```bash
 AIVEN_CLOUD # (default: "do-nyc")
-AIVEN_PG_VERSION # (default: "pgversion=12")
+AIVEN_PG_VERSION # (default: "14")
 AIVEN_PLAN # (default: startup-4)
 AIVEN_SERVICE_TYPE # (default: "pg" for postgres)
 AIVEN_DBNAME # name of the db (default: "propertymeld")

@@ -26,4 +26,4 @@ if [ -d "$ENV_DIR" ]; then
 fi
 
 puts_step "install aiven-client"
-python -m pip install aiven-client===2.3.5
+python -m pip install aiven-client===2.14.8

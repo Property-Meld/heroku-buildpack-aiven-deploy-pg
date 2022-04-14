@@ -94,8 +94,8 @@ service_config = {
     "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg") or "pg",
     "plan": os.environ.get("AIVEN_PLAN", "startup-4")
     or "startup-4",  # hobbyist does not support pooling
-    "pg_version": os.environ.get("AIVEN_PG_VERSION", "pg_version=12")
-    or "pg_version=12",
+    "pg_version": os.environ.get("AIVEN_PG_VERSION", "14")
+    or "14",
 }
 
 stdout(f"service_config: {service_config}")
