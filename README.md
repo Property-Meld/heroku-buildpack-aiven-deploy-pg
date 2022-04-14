@@ -80,3 +80,17 @@ Testing this buildpack locally:
 The db deployment process will run locally.
 
 The review app should then have the above environment variables set, after a successful deployment. Go to the reivew app in the heroku dashboard and click through to settings to `reveal config vars`
+
+
+
+```
+
+for line in $(find . -type f);do export $(echo $line | sed 's:./::g')=$(cat $line);done
+invoke -r ../bin do-get-staging-db-url
+
+invoke -r ../bin service-create-aiven-db
+invoke -r ../bin create-db-task
+invoke -r ../bin setup-review-app-database
+invoke -r ../bin create-pool-uri-and-set-env
+
+```
