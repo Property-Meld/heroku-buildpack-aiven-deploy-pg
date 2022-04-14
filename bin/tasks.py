@@ -758,9 +758,35 @@ def _create_empty_db():
         )
 
 
+def _pulumi_deploy():
+  # TODO: this looks way more straight forward and could abstract the entire interface
+  # making the interface surface much smaller, there may even be a pre-existing buildpack for pulumi-aiven
+  import pulumi_aiven as aiven
+  name = f"pm-{str(uuid4()).lower()}"
+  pulumi_config = {
+    "service_name": name,
+    "resource_name": name,
+    "cloud_name": os.environ.get("AIVEN_CLOUD", "do-nyc") or "do-nyc",
+    "service_type": os.environ.get("AIVEN_SERVICE_TYPE", "pg") or "pg",
+    "plan": os.environ.get("AIVEN_PLAN", "startup-4")
+            or "startup-4",  # hobbyist does not support pooling
+    "pg_user_config": {
+      "pg_version": os.environ.get("AIVEN_PG_VERSION", "14.2")
+                    or "14.2",
+    },
+    "project": os.environ.get("AIVEN_PROJECT_NAME"),
+  }
+  print(pulumi_config)
+  aiven.Service(**pulumi_config)
+
+
 @task
 def create_empty_db(ctx):
     _create_empty_db()
+
+@task
+def use_pulumi_deploy(ctx):
+    _pulumi_deploy()
 
 
 @click.command()

@@ -18,6 +18,9 @@ source "$BIN_DIR/steps/displayinfo"
 puts_step "try avn client"
 avn --auth-token $AIVEN_AUTH_TOKEN project list
 
+puts_step "configuring pulumi"
+pulumi config set aiven:apiToken $AIVEN_AUTH_TOKEN --secret
+
 puts_step "deploy aiven instance"
 
 puts_step "$(invoke -r $BIN_DIR --list)"

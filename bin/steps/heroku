@@ -27,3 +27,6 @@ fi
 
 puts_step "install aiven-client"
 python -m pip install aiven-client===2.3.5
+
+puts_step "install pulumi-aiven"
+python -m pip install pulumi-aiven===4.5.0
