@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-# see: https://heroku-buildpack-python.s3.amazonaws.com/
-# https://heroku-buildpack-python.s3.amazonaws.com/heroku-20/runtimes/python-3.9.10.tar.gz
-PYTHON_VERSION=$(cat runtime.txt)
+PYTHON_VERSION="python-3.9.10"
 STACK="heroku-20"
 BUILD_DIR=$1
 CACHE_DIR=$2
@@ -22,8 +20,7 @@ else
     rm -rf ${CACHE_DIR}/*
     # https://github.com/heroku/heroku-buildpack-python/blob/master/bin/steps/python
     mkdir -p ${CACHE_DIR}/${VENDORED_BIN}
-
-    S3_URL="https://heroku-buildpack-python.s3.amazonaws.com/${STACK}/runtimes/${PYTHON_VERSION}.tar.gz"
+    S3_URL="https://lang-python.s3.amazonaws.com/${STACK}/runtimes/${PYTHON_VERSION}.tar.gz"
     echo "-----> Downloading ${S3_URL}"
     if ! curl -s ${S3_URL} -o ${CACHE_DIR}/python.tar.gz; then
         echo "Python ${PYTHON_VERSION} not available ${STACK} stack." | indent

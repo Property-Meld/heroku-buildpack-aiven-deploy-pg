@@ -6,8 +6,6 @@ source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/
 if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
     source "$BUILD_DIR/.profile.d/heroku-cli.sh"
     export HEROKU_BIN="$BUILD_DIR/.heroku/bin/heroku"
-else
-    export HEROKU_BIN=$(cat HEROKU_BIN)
 fi
 
 if [ -d "$ENV_DIR" ]; then
@@ -16,7 +14,6 @@ if [ -d "$ENV_DIR" ]; then
 
   echo "AIVEN_PROJECT_NAME ENV_DIR: $(cat $ENV_DIR/AIVEN_PROJECT_NAME)"
   export "AIVEN_AUTH_TOKEN=$(cat $ENV_DIR/AIVEN_AUTH_TOKEN)"
-  export "PROTECTED_AIVEN_APP_NAMES=$(cat $ENV_DIR/PROTECTED_AIVEN_APP_NAMES)"
   export "AIVEN_PROJECT_NAME=$(cat $ENV_DIR/AIVEN_PROJECT_NAME)"
   export "AIVEN_CLOUD=$(cat $ENV_DIR/AIVEN_CLOUD)"
   export "AIVEN_SERVICE_TYPE=$(cat $ENV_DIR/AIVEN_SERVICE_TYPE)"
