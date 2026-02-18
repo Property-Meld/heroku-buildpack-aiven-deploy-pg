@@ -18,12 +18,12 @@ echo $(ls -la .)
 #   ],
 ###########
 
-if ! [ -x "$(command -v python)" ]; then
+if ! [ -x "$(command -v python3)" ]; then
   echo 'Error: python is not installed.' >&2
   exit 1
 else
   echo 'python version:'
-  echo     "$(python --version)"
+  echo     "$(python3 --version)"
 fi
 
 if [ -f "$BUILD_DIR/.profile.d/heroku-cli.sh" ]; then
@@ -34,7 +34,7 @@ else
 fi
 
 
-python -c "import pip"
-python -c "import invoke"
+python3 -c "import pip"
+python3 -c "import invoke"
 
 exit 0
